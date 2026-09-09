@@ -1,0 +1,104 @@
+import React, { useState, useEffect } from 'react';
+import GameLayout from '../../components/ui/GameLayout';
+import { getHighScore, setHighScore } from '../../lib/storage';
+
+const WORDS = ['REACT', 'TYPESCRIPT', 'PUZZLE', 'SEARCH', 'CODING', 'BROWSER', 'KEYBOARD', 'FUNCTION'];
+const GRID_SIZE = 10;
+
+function generateGrid(words: string[]): { grid: string[][]; positions: Map<string, [number, number][]> } {
+  const grid: string[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
+  const positions = new Map<string, [number, number][]>();
+  const dirs = [[0, 1], [1, 0], [1, 1], [-1, 1]];
+
+  for (const word of words) {
+    let placed = false;
+    for (let attempt = 0; attempt < 100 && !placed; attempt++) {
+      const dir = dirs[Math.floor(Math.random() * dirs.length)];
+      const r = Math.floor(Math.random() * GRID_SIZE);
+      const c = Math.floor(Math.random() * GRID_SIZE);
+      const endR = r + dir[0] * (word.length - 1);
+      const endC = c + dir[1] * (word.length - 1);
+      if (endR < 0 || endR >= GRID_SIZE || endC < 0 || endC >= GRID_SIZE) continue;
+
+      let canPlace = true;
+      const pos: [number, number][] = [];
+      for (let i = 0; i < word.length; i++) {
+        const cr = r + dir[0] * i, cc = c + dir[1] * i;
+        if (grid[cr][cc] !== '' && grid[cr][cc] !== word[i]) {
+          canPlace = false;
+          break;
+        }
+        pos.push([cr, cc]);
+      }
+      if (canPlace) {
+        pos.forEach(([pr, pc], i) => {
+          grid[pr][pc] = word[i];
+        });
+        positions.set(word, pos);
+        placed = true;
+      }
+    }
+  }
+
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (grid[r][c] === '') {
+        grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+      }
+    }
+  }
+  return { grid, positions };
+}
+
+export default function WordSearch() {
+  const [data] = useState(() => generateGrid(WORDS));
+  const [found, setFound] = useState<Set<string>>(new Set());
+  const [highScore, setHS] = useState(getHighScore('word-search'));
+  const [won, setWon] = useState(false);
+
+  const findWord = (word: string) => {
+    if (found.has(word)) return;
+    const newFound = new Set(found);
+    newFound.add(word);
+    setFound(newFound);
+    if (newFound.size === WORDS.length) {
+      setWon(true);
+      setHS(h => {
+        const best = Math.max(h, 1000);
+        setHighScore('word-search', best);
+        return best;
+      });
+    }
+  };
+
+  const reset = () => window.location.reload();
+
+  return (
+    <GameLayout title="Word Search" score={`${found.size}/${WORDS.length}`} highScore={highScore} onReset={reset}>
+      <div className="flex flex-col items-center gap-4">
+        {won && <p className="text-green-400 text-xl font-bold">🎉 All words found!</p>}
+        <div className="inline-grid gap-0 bg-gray-800 p-2 rounded-lg" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
+          {data.grid.flat().map((ch, i) => (
+            <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-mono font-bold text-gray-300">
+              {ch}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {WORDS.map(word => (
+            <button
+              key={word}
+              onClick={() => findWord(word)}
+              className={`px-3 py-1 rounded-lg text-sm font-bold transition-all ${
+                found.has(word) ? 'bg-green-600 text-white line-through' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {word}
+            </button>
+          ))}
+        </div>
+        <p className="text-gray-500 text-xs">Click words to mark them found</p>
+      </div>
+    </GameLayout>
+  );
+}
