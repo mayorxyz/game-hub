@@ -102,10 +102,10 @@ export default function Snake() {
     <GameLayout title="Snake" score={score} highScore={highScore} onReset={reset}>
       <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {!running && !gameOver && (
-          <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg">Start</button>
+          <button onClick={reset} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg">Start</button>
         )}
         {gameOver && (
-          <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg">Play Again</button>
+          <button onClick={reset} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg">Play Again</button>
         )}
         
         {/* Responsive Game Grid */}

@@ -163,14 +163,14 @@ export default function Blackjack() {
                 <span className="text-white font-bold">${bet}</span>
                 <button onClick={() => setBet(b => Math.min(chips, b + 5))} className="min-w-[48px] min-h-[48px] w-8 h-8 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg" style={{ touchAction: 'manipulation' }}>+</button>
               </div>
-              <button onClick={deal} disabled={chips < bet} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 active:from-green-600 active:to-emerald-600 rounded-lg font-bold disabled:opacity-50" style={{ touchAction: 'manipulation' }}>
+              <button onClick={deal} disabled={chips < bet} className="min-h-[48px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold disabled:opacity-50" style={{ touchAction: 'manipulation' }}>
                 Deal
               </button>
             </div>
           ) : (
             <>
-              <button onClick={hit} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 active:from-blue-600 active:to-cyan-600 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Hit</button>
-              <button onClick={stand} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 active:from-red-600 active:to-pink-600 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Stand</button>
+              <button onClick={hit} className="min-h-[48px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Hit</button>
+              <button onClick={stand} className="min-h-[48px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Stand</button>
             </>
           )}
         </div>

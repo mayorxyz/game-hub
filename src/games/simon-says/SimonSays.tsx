@@ -69,7 +69,7 @@ export default function SimonSays() {
     <GameLayout title="Simon Says" score={score} highScore={highScore} onReset={start}>
       <div className="flex flex-col items-center gap-4">
         {gameOver && <p className="text-red-400 text-xl font-bold">Wrong! Score: {score}</p>}
-        {!started && <button onClick={start} className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-bold">Start</button>}
+        {!started && <button onClick={start} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold">Start</button>}
         <div className="grid grid-cols-2 gap-3 w-56 h-56 sm:w-64 sm:h-64">
           {COLORS.map(color => (
             <button

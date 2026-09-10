@@ -135,7 +135,7 @@ export default function Pong() {
       <div className="flex flex-col items-center gap-4">
         {gameOver && <p className="text-xl font-bold text-amber-400">{winner}</p>}
         {!stateRef.current.running && !gameOver && (
-          <button onClick={reset} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-bold">Start</button>
+          <button onClick={reset} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold">Start</button>
         )}
         {/* Responsive Canvas */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[4/3]">

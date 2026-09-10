@@ -73,7 +73,7 @@ export default function WhackAMole() {
     <GameLayout title="Whack-a-Mole" score={`${score} · Time: ${time}s`} highScore={highScore} onReset={start}>
       <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {notStarted && (
-          <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg">
+          <button onClick={start} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg">
             Start
           </button>
         )}
@@ -81,7 +81,7 @@ export default function WhackAMole() {
         {gameEnded && (
           <div className="text-center">
             <p className="text-amber-400 mb-2">Time's up! Score: {score}</p>
-            <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg">
+            <button onClick={start} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg">
               Play Again
             </button>
           </div>

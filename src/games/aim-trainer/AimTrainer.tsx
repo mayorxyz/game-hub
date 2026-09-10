@@ -79,7 +79,7 @@ export default function AimTrainer() {
           <span className="text-gray-400">Accuracy: <span className="text-white font-bold">{accuracy}%</span></span>
         </div>
         {!running && timeLeft === TIME_LIMIT && (
-          <button onClick={start} className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg font-bold">Start</button>
+          <button onClick={start} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold">Start</button>
         )}
         {timeLeft === 0 && <p className="text-amber-400 text-xl font-bold">Score: {score} | Accuracy: {accuracy}%</p>}
         {/* Responsive Game Area */}

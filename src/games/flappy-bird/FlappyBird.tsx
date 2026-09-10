@@ -20,7 +20,7 @@ useEffect(() => {
     <GameLayout title="Flappy Bird" score={score} highScore={highScore} onReset={reset}>
       <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {over&&<p className="text-red-400">Game Over!</p>}
-        <button onClick={reset} className="px-6 py-3 bg-yellow-600 rounded-lg">{over?'Play Again':'Start'}</button>
+        <button onClick={reset} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg">{over?'Play Again':'Start'}</button>
         
         {/* Responsive Canvas */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[2/3]">
