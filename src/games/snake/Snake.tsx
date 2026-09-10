@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
+import VirtualDPad from '../../components/ui/controls/VirtualDPad';
+import TouchControlContainer from '../../components/ui/controls/TouchControlContainer';
 
 const GRID = 20;
-const CELL = 20;
 
 type Dir = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Pos = { x: number; y: number };
@@ -88,31 +90,57 @@ export default function Snake() {
     setRunning(true);
   };
 
+  const handleDirectionPress = (direction: 'up' | 'down' | 'left' | 'right') => {
+    const d = dirRef.current;
+    if (direction === 'up' && d !== 'DOWN') setDir('UP');
+    else if (direction === 'down' && d !== 'UP') setDir('DOWN');
+    else if (direction === 'left' && d !== 'RIGHT') setDir('LEFT');
+    else if (direction === 'right' && d !== 'LEFT') setDir('RIGHT');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-4">Snake</h1>
-      <div className="mb-4 flex gap-6">
-        <p>Score: {score}</p>
-        <p>Best: {highScore}</p>
-      </div>
-      {!running && !gameOver && <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Start</button>}
-      {gameOver && <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Play Again</button>}
-      <div className="border border-gray-700">
-        {Array.from({ length: GRID }).map((_, y) => (
-          <div key={y} className="flex">
-            {Array.from({ length: GRID }).map((_, x) => {
-              const isSnake = snake.some(s => s.x === x && s.y === y);
-              const isFood = food.x === x && food.y === y;
-              return (
-                <div
-                  key={x}
-                  className={`w-5 h-5 ${isSnake ? 'bg-green-500' : isFood ? 'bg-red-500' : 'bg-gray-800'}`}
-                />
-              );
-            })}
+    <GameLayout title="Snake" score={score} highScore={highScore} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {!running && !gameOver && (
+          <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg">Start</button>
+        )}
+        {gameOver && (
+          <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg">Play Again</button>
+        )}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 border border-gray-700 overflow-hidden">
+            <div 
+              className="grid h-full w-full"
+              style={{ 
+                gridTemplateColumns: `repeat(${GRID}, 1fr)`,
+                gridTemplateRows: `repeat(${GRID}, 1fr)`
+              }}
+            >
+              {Array.from({ length: GRID * GRID }).map((_, idx) => {
+                const x = idx % GRID;
+                const y = Math.floor(idx / GRID);
+                const isSnake = snake.some(s => s.x === x && s.y === y);
+                const isFood = food.x === x && food.y === y;
+                return (
+                  <div
+                    key={idx}
+                    className={`${isSnake ? 'bg-green-500' : isFood ? 'bg-red-500' : 'bg-gray-800'}`}
+                  />
+                );
+              })}
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* Mobile Touch Controls */}
+        <TouchControlContainer>
+          <div className="flex justify-center">
+            <VirtualDPad onDirectionPress={handleDirectionPress} />
+          </div>
+        </TouchControlContainer>
       </div>
-    </div>
+    </GameLayout>
   );
 }
