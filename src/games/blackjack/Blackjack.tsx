@@ -115,7 +115,7 @@ export default function Blackjack() {
   };
 
   const CardDisplay = ({ card, hidden }: { card: Card; hidden?: boolean }) => (
-    <div className={`w-14 h-20 sm:w-16 sm:h-24 rounded-lg border-2 flex flex-col items-center justify-center font-bold text-sm sm:text-base ${
+    <div className={`w-14 h-20 sm:w-16 sm:h-24 max-h-[25vh] rounded-lg border-2 flex flex-col items-center justify-center font-bold text-sm sm:text-base ${
       hidden ? 'bg-blue-800 border-blue-600' : 'bg-white border-gray-300'
     }`}>
       {hidden ? '?' : (
@@ -133,12 +133,12 @@ export default function Blackjack() {
 
   return (
     <GameLayout title="Blackjack" score={`$${chips}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
 
         <div className="text-center">
           <p className="text-gray-400 text-sm mb-2">Dealer {dealerRevealed ? `(${handValue(dealerHand)})` : ''}</p>
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
             {dealerHand.map((card, i) => (
               <CardDisplay key={card.id} card={card} hidden={!dealerRevealed && i === 1} />
             ))}
@@ -147,7 +147,7 @@ export default function Blackjack() {
 
         <div className="text-center">
           <p className="text-gray-400 text-sm mb-2">You ({handValue(playerHand)})</p>
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
             {playerHand.map(card => (
               <CardDisplay key={card.id} card={card} />
             ))}
@@ -159,18 +159,18 @@ export default function Blackjack() {
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 text-sm">Bet:</span>
-                <button onClick={() => setBet(b => Math.max(5, b - 5))} className="w-8 h-8 bg-gray-700 rounded-lg">-</button>
+                <button onClick={() => setBet(b => Math.max(5, b - 5))} className="min-w-[48px] min-h-[48px] w-8 h-8 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg" style={{ touchAction: 'manipulation' }}>-</button>
                 <span className="text-white font-bold">${bet}</span>
-                <button onClick={() => setBet(b => Math.min(chips, b + 5))} className="w-8 h-8 bg-gray-700 rounded-lg">+</button>
+                <button onClick={() => setBet(b => Math.min(chips, b + 5))} className="min-w-[48px] min-h-[48px] w-8 h-8 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg" style={{ touchAction: 'manipulation' }}>+</button>
               </div>
-              <button onClick={deal} disabled={chips < bet} className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-bold disabled:opacity-50">
+              <button onClick={deal} disabled={chips < bet} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 active:from-green-600 active:to-emerald-600 rounded-lg font-bold disabled:opacity-50" style={{ touchAction: 'manipulation' }}>
                 Deal
               </button>
             </div>
           ) : (
             <>
-              <button onClick={hit} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg font-bold">Hit</button>
-              <button onClick={stand} className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg font-bold">Stand</button>
+              <button onClick={hit} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 active:from-blue-600 active:to-cyan-600 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Hit</button>
+              <button onClick={stand} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 active:from-red-600 active:to-pink-600 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Stand</button>
             </>
           )}
         </div>

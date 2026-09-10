@@ -68,15 +68,15 @@ export default function TypingGame() {
 
   return (
     <GameLayout title="Typing Game" score={finished ? `${wpm} WPM` : started ? `${wpm} WPM` : undefined} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4 max-w-lg mx-auto">
         {!started && (
-          <button onClick={start} className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg font-bold">Start Typing</button>
+          <button onClick={start} className="min-h-[48px] px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 active:from-indigo-600 active:to-purple-600 rounded-lg font-bold" style={{ touchAction: 'manipulation' }}>Start Typing</button>
         )}
         {finished && <p className="text-green-400 text-xl font-bold">🎉 {wpm} WPM · {accuracy}% accuracy</p>}
 
         {started && (
           <>
-            <div className="bg-gray-800 p-4 rounded-xl w-full text-sm sm:text-base font-mono leading-relaxed">
+            <div className="bg-gray-800 p-4 rounded-xl w-full text-sm sm:text-base font-mono leading-relaxed overflow-auto">
               {text.split('').map((ch, i) => (
                 <span key={i} className={
                   i < input.length
@@ -92,12 +92,13 @@ export default function TypingGame() {
               value={input}
               onChange={handleChange}
               disabled={finished}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white font-mono focus:outline-none focus:border-purple-500"
+              className="w-full min-h-[48px] bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white font-mono focus:outline-none focus:border-purple-500"
               placeholder="Start typing..."
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              style={{ touchAction: 'manipulation' }}
             />
             <div className="flex gap-4 text-sm text-gray-400">
               <span>WPM: <span className="text-white font-bold">{wpm}</span></span>

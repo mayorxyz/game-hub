@@ -54,7 +54,7 @@ export default function RockPaperScissors() {
 
   return (
     <GameLayout title="Rock Paper Scissors" score={`W:${score.wins} L:${score.losses} D:${score.draws}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-6">
         {lastResult && (
           <div className="flex items-center gap-6 text-5xl sm:text-6xl">
             <div className="text-center">
@@ -78,7 +78,8 @@ export default function RockPaperScissors() {
             <button
               key={choice}
               onClick={() => play(choice)}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-700 hover:bg-gray-600 text-3xl sm:text-4xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+              className="min-w-[64px] min-h-[64px] w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-3xl sm:text-4xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+              style={{ touchAction: 'manipulation' }}
             >
               {EMOJIS[choice]}
             </button>

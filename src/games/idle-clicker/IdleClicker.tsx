@@ -57,10 +57,11 @@ export default function IdleClicker() {
 
   return (
     <GameLayout title="Idle Clicker" score={`${Math.floor(coins)} coins`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         <button
           onClick={click}
-          className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-5xl sm:text-6xl shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-transform"
+          className="min-w-[128px] min-h-[128px] w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-5xl sm:text-6xl shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-transform"
+          style={{ touchAction: 'manipulation' }}
         >
           💰
         </button>
@@ -69,15 +70,16 @@ export default function IdleClicker() {
           <p className="text-gray-400 text-sm">{cps.toFixed(1)} coins/sec · +{clickPower}/click</p>
         </div>
 
-        <div className="w-full max-w-sm space-y-2">
+        <div className="w-full max-w-sm space-y-2 overflow-auto flex-1">
           {upgrades.map((u, i) => (
             <button
               key={u.id}
               onClick={() => buyUpgrade(i)}
               disabled={coins < u.cost}
-              className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
-                coins >= u.cost ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800 opacity-50 cursor-not-allowed'
+              className={`w-full min-h-[48px] flex items-center gap-3 p-3 rounded-lg transition-all ${
+                coins >= u.cost ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-500' : 'bg-gray-800 opacity-50 cursor-not-allowed'
               }`}
+              style={{ touchAction: 'manipulation' }}
             >
               <span className="text-2xl">{u.icon}</span>
               <div className="flex-1 text-left">

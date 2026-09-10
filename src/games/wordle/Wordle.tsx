@@ -101,7 +101,7 @@ export default function Wordle() {
 
   return (
     <GameLayout title="Wordle" score={won ? `${MAX_GUESSES - guesses.length + 1}/6` : undefined} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {won && <p className="text-green-400 text-xl font-bold">🎉 Got it in {guesses.length}!</p>}
         {gameOver && !won && <p className="text-red-400 text-xl font-bold">The word was: {target}</p>}
 
@@ -134,12 +134,13 @@ export default function Wordle() {
                   <button
                     key={letter}
                     onClick={() => setCurrent(c => c.length < WORD_LEN ? c + letter : c)}
-                    className={`w-8 h-10 sm:w-9 sm:h-11 rounded text-xs sm:text-sm font-bold ${
+                    className={`min-w-[48px] min-h-[48px] rounded text-xs sm:text-sm font-bold ${
                       state === 'correct' ? 'bg-green-600' :
                       state === 'present' ? 'bg-yellow-600' :
                       state === 'absent' ? 'bg-gray-700' :
-                      'bg-gray-600 hover:bg-gray-500'
+                      'bg-gray-600 hover:bg-gray-500 active:bg-gray-400'
                     } text-white`}
+                    style={{ touchAction: 'manipulation' }}
                   >
                     {letter}
                   </button>
@@ -147,7 +148,7 @@ export default function Wordle() {
               })}
             </div>
           ))}
-          <button onClick={submitGuess} className="px-3 h-10 bg-green-600 rounded text-sm font-bold text-white">⏎</button>
+          <button onClick={submitGuess} className="min-w-[48px] min-h-[48px] px-3 bg-green-600 hover:bg-green-500 active:bg-green-400 rounded text-sm font-bold text-white" style={{ touchAction: 'manipulation' }}>⏎</button>
           <button onClick={() => setCurrent(c => c.slice(0, -1))} className="px-3 h-10 bg-gray-600 rounded text-sm font-bold text-white">⌫</button>
         </div>
       </div>

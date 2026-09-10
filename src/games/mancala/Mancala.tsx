@@ -233,23 +233,23 @@ export default function Mancala() {
 
   return (
     <GameLayout title="Mancala" score={`You: ${state.pits[6]} · Bot: ${state.pits[13]}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="bg-amber-900 p-4 rounded-2xl flex gap-2">
+        <div className="bg-amber-900 p-4 rounded-2xl flex gap-2 overflow-auto">
           <div className="flex flex-col gap-2">
             <div className="flex gap-1">
               {[12,11,10,9,8,7].map(i => (
-                <div key={i} className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-800 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                <div key={i} className="min-w-[48px] min-h-[48px] w-10 h-10 sm:w-12 sm:h-12 bg-amber-800 rounded-full flex items-center justify-center text-sm font-bold text-white">
                   {state.pits[i]}
                 </div>
               ))}
             </div>
           </div>
           <div className="flex flex-col justify-between">
-            <div className="w-10 h-24 sm:w-12 sm:h-28 bg-amber-700 rounded-full flex items-center justify-center text-sm font-bold text-white">{state.pits[13]}</div>
+            <div className="min-w-[48px] w-10 h-24 sm:w-12 sm:h-28 bg-amber-700 rounded-full flex items-center justify-center text-sm font-bold text-white">{state.pits[13]}</div>
           </div>
           <div className="flex flex-col justify-between">
-            <div className="w-10 h-24 sm:w-12 sm:h-28 bg-amber-700 rounded-full flex items-center justify-center text-sm font-bold text-white">{state.pits[6]}</div>
+            <div className="min-w-[48px] w-10 h-24 sm:w-12 sm:h-28 bg-amber-700 rounded-full flex items-center justify-center text-sm font-bold text-white">{state.pits[6]}</div>
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex gap-1">
@@ -258,7 +258,8 @@ export default function Mancala() {
                   key={i}
                   onClick={() => handleClick(i)}
                   disabled={!isPlayerTurn || state.pits[i] === 0}
-                  className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-800 hover:bg-amber-600 rounded-full flex items-center justify-center text-sm font-bold text-white disabled:opacity-50"
+                  className="min-w-[48px] min-h-[48px] w-10 h-10 sm:w-12 sm:h-12 bg-amber-800 hover:bg-amber-600 active:bg-amber-500 rounded-full flex items-center justify-center text-sm font-bold text-white disabled:opacity-50"
+                  style={{ touchAction: 'manipulation' }}
                 >
                   {state.pits[i]}
                 </button>

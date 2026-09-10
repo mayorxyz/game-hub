@@ -40,7 +40,7 @@ export default function Hangman() {
 
   return (
     <GameLayout title="Hangman" score={`Streak: ${streak}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         <div className="text-4xl sm:text-5xl h-16 flex items-center justify-center">
           {wrongGuesses >= 1 && '😵'}
           {wrongGuesses === 0 && '😊'}
@@ -63,11 +63,12 @@ export default function Hangman() {
               key={letter}
               onClick={() => guess(letter)}
               disabled={guessed.has(letter) || isWon || isLost}
-              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              className={`min-w-[48px] min-h-[48px] rounded-lg text-xs sm:text-sm font-bold transition-all ${
                 guessed.has(letter)
                   ? word.includes(letter) ? 'bg-green-600 text-white' : 'bg-red-600/50 text-gray-400'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white'
               } disabled:cursor-not-allowed`}
+              style={{ touchAction: 'manipulation' }}
             >
               {letter}
             </button>
