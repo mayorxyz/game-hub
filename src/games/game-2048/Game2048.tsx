@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getHighScore, setHighScore } from '../../lib/persistence';
 
 const SIZE = 4;
 
@@ -100,6 +101,7 @@ export default function Game2048() {
   const [board, setBoard] = useState<Board>(() => addRandom(addRandom(createBoard())));
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [highScore, setHighScoreState] = useState(getHighScore('2048'));
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -120,6 +122,15 @@ export default function Game2048() {
           // Check for game over
           if (!hasValidMoves(withNew)) {
             setGameOver(true);
+            // Update high score
+            setScore(currentScore => {
+              const currentHigh = getHighScore('2048');
+              if (currentScore > currentHigh) {
+                setHighScore('2048', currentScore);
+                setHighScoreState(currentScore);
+              }
+              return currentScore;
+            });
           }
           return withNew;
         });
@@ -138,7 +149,10 @@ export default function Game2048() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">2048</h1>
-      <p className="mb-4">Score: {score}</p>
+      <div className="mb-4 flex gap-6">
+        <p>Score: {score}</p>
+        <p>Best: {highScore}</p>
+      </div>
       {gameOver && <p className="text-red-400 text-xl font-bold mb-4">Game Over!</p>}
       <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Reset</button>
       <div className="bg-gray-800 p-4 rounded-lg grid grid-cols-4 gap-2">

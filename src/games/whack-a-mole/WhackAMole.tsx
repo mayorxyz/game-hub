@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getHighScore, setHighScore } from '../../lib/persistence';
 
 const G = 3;
 const T = 30;
@@ -8,6 +9,7 @@ export default function WhackAMole() {
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(T);
   const [running, setRunning] = useState(false);
+  const [highScore, setHighScoreState] = useState(getHighScore('whack-a-mole'));
   const t = useRef<ReturnType<typeof setInterval>>();
   const m = useRef<ReturnType<typeof setInterval>>();
 
@@ -58,10 +60,21 @@ export default function WhackAMole() {
   const gameEnded = !running && time === 0;
   const notStarted = !running && time === T;
 
+  // Update high score when game ends
+  useEffect(() => {
+    if (gameEnded && score > highScore) {
+      setHighScore('whack-a-mole', score);
+      setHighScoreState(score);
+    }
+  }, [gameEnded, score, highScore]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">Whack-a-Mole</h1>
-      <p className="mb-2">Score: {score} · Time: {time}s</p>
+      <div className="mb-2 flex gap-6">
+        <p>Score: {score} · Time: {time}s</p>
+        <p>Best: {highScore}</p>
+      </div>
 
       {notStarted && (
         <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg mb-4">

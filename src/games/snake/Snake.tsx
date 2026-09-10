@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getHighScore, setHighScore } from '../../lib/persistence';
 
 const GRID = 20;
 const CELL = 20;
@@ -21,6 +22,7 @@ export default function Snake() {
   const [running, setRunning] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
+  const [highScore, setHighScoreState] = useState(getHighScore('snake'));
   const dirRef = useRef(dir);
   dirRef.current = dir;
 
@@ -50,6 +52,15 @@ export default function Snake() {
         if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID || prev.some(s => s.x === head.x && s.y === head.y)) {
           setGameOver(true);
           setRunning(false);
+          // Update high score
+          setScore(currentScore => {
+            const currentHigh = getHighScore('snake');
+            if (currentScore > currentHigh) {
+              setHighScore('snake', currentScore);
+              setHighScoreState(currentScore);
+            }
+            return currentScore;
+          });
           return prev;
         }
 
@@ -78,7 +89,10 @@ export default function Snake() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">Snake</h1>
-      <p className="mb-4">Score: {score}</p>
+      <div className="mb-4 flex gap-6">
+        <p>Score: {score}</p>
+        <p>Best: {highScore}</p>
+      </div>
       {!running && !gameOver && <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Start</button>}
       {gameOver && <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Play Again</button>}
       <div className="border border-gray-700">

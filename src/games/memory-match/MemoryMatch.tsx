@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getHighScore, setHighScore } from '../../lib/persistence';
 
 const EMOJIS = ['🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎸', '🎺'];
 
@@ -19,6 +20,9 @@ export default function MemoryMatch() {
   const [cards, setCards] = useState<Card[]>(createCards);
   const [selected, setSelected] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
+  // For Memory Match, lower moves is better. Store as inverted value for consistency.
+  const storedBest = getHighScore('memory-match');
+  const [bestMoves, setBestMoves] = useState<number>(storedBest > 0 ? 10000 - storedBest : Infinity);
 
   useEffect(() => {
     if (selected.length === 2) {
@@ -50,10 +54,24 @@ export default function MemoryMatch() {
 
   const allMatched = cards.every(c => c.matched);
 
+  // Update best moves when game is won
+  useEffect(() => {
+    if (allMatched && moves > 0) {
+      if (moves < bestMoves) {
+        setBestMoves(moves);
+        // Store inverted value for consistency with high score system
+        setHighScore('memory-match', 10000 - moves);
+      }
+    }
+  }, [allMatched, moves, bestMoves]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">Memory Match</h1>
-      <p className="mb-4">Moves: {moves}</p>
+      <div className="mb-4 flex gap-6">
+        <p>Moves: {moves}</p>
+        {bestMoves !== Infinity && <p>Best: {bestMoves}</p>}
+      </div>
       {allMatched && (
         <div className="mb-4 text-center">
           <p className="text-green-400 text-xl font-bold mb-2">🎉 You Win!</p>
