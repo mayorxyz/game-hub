@@ -1,15 +1,40 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/storage';
 
 type Phase = 'waiting' | 'ready' | 'go' | 'result' | 'too-early';
 
+// For reaction timer, lower time is better, but setHighScore saves higher values.
+// We store the actual reaction time directly and handle comparison ourselves.
+const STORAGE_KEY = 'gamehub.games.reaction-timer.highScore';
+
+function getBestTime(): number {
+  const val = localStorage.getItem(STORAGE_KEY);
+  if (!val) return Infinity;
+  const n = parseInt(val, 10);
+  return isNaN(n) ? Infinity : n;
+}
+
+function saveBestTime(time: number): void {
+  const current = getBestTime();
+  if (time < current) {
+    localStorage.setItem(STORAGE_KEY, time.toString());
+  }
+}
+
 export default function ReactionTimer() {
   const [phase, setPhase] = useState<Phase>('waiting');
   const [startTime, setStartTime] = useState(0);
   const [reactionTime, setReactionTime] = useState(0);
-  const [best, setBest] = useState(getHighScore('reaction-timer') || Infinity);
+  const [best, setBest] = useState<number>(getBestTime());
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const start = () => {
     setPhase('ready');
@@ -24,7 +49,7 @@ export default function ReactionTimer() {
     if (phase === 'waiting' || phase === 'result' || phase === 'too-early') {
       start();
     } else if (phase === 'ready') {
-      clearTimeout(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       setPhase('too-early');
     } else if (phase === 'go') {
       const time = Date.now() - startTime;
@@ -32,7 +57,7 @@ export default function ReactionTimer() {
       setPhase('result');
       if (time < best) {
         setBest(time);
-        setHighScore('reaction-timer', 10000 - time);
+        saveBestTime(time);
       }
     }
   };
@@ -54,7 +79,11 @@ export default function ReactionTimer() {
   };
 
   return (
-    <GameLayout title="Reaction Timer" score={phase === 'result' ? `${reactionTime}ms` : undefined} highScore={best === Infinity ? undefined : `${best}ms`}>
+    <GameLayout
+      title="Reaction Timer"
+      score={phase === 'result' ? `${reactionTime}ms` : undefined}
+      highScore={best === Infinity ? undefined : `${best}ms`}
+    >
       <div className="flex flex-col items-center gap-4">
         <button
           onClick={handleClick}

@@ -3,6 +3,42 @@
 
 const NAMESPACE = 'gamehub';
 
+// One-time migration from legacy storage format
+function migrateLegacyScores(): void {
+  const migratedKey = `${NAMESPACE}.migrated`;
+  if (localStorage.getItem(migratedKey)) return;
+  
+  // Migrate legacy high scores (gamehub_<gameId>_highscore -> gamehub.games.<gameId>.highScore)
+  const keys = Object.keys(localStorage);
+  keys.forEach(key => {
+    const match = key.match(/^gamehub_([^_]+)_highscore$/);
+    if (match) {
+      const gameId = match[1];
+      const value = localStorage.getItem(key);
+      if (value) {
+        const newKey = `${NAMESPACE}.games.${gameId}.highScore`;
+        if (!localStorage.getItem(newKey)) {
+          localStorage.setItem(newKey, value);
+        }
+      }
+    }
+  });
+  
+  // Migrate legacy recently played
+  const legacyRecent = localStorage.getItem('gamehub_recently_played');
+  if (legacyRecent) {
+    const newKey = `${NAMESPACE}.history.recent`;
+    if (!localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, legacyRecent);
+    }
+  }
+  
+  localStorage.setItem(migratedKey, 'true');
+}
+
+// Run migration on module load
+migrateLegacyScores();
+
 // High scores
 export function getHighScore(gameId: string): number {
   const key = `${NAMESPACE}.games.${gameId}.highScore`;
@@ -47,7 +83,13 @@ export function setLastPlayed(gameId: string): void {
 export function getRecentlyPlayed(): string[] {
   const key = `${NAMESPACE}.history.recent`;
   const val = localStorage.getItem(key);
-  return val ? JSON.parse(val) : [];
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 export function addRecentlyPlayed(gameId: string): void {
@@ -63,7 +105,13 @@ export function addRecentlyPlayed(gameId: string): void {
 export function getFavorites(): string[] {
   const key = `${NAMESPACE}.favorites`;
   const val = localStorage.getItem(key);
-  return val ? JSON.parse(val) : [];
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 export function addFavorite(gameId: string): void {

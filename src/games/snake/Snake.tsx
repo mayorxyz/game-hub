@@ -6,6 +6,14 @@ const CELL = 20;
 type Dir = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Pos = { x: number; y: number };
 
+function generateFood(snake: Pos[]): Pos {
+  let pos: Pos;
+  do {
+    pos = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
+  } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  return pos;
+}
+
 export default function Snake() {
   const [snake, setSnake] = useState<Pos[]>([{ x: 10, y: 10 }]);
   const [food, setFood] = useState<Pos>({ x: 5, y: 5 });
@@ -48,7 +56,7 @@ export default function Snake() {
         const newSnake = [head, ...prev];
         if (head.x === food.x && head.y === food.y) {
           setScore(s => s + 10);
-          setFood({ x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) });
+          setFood(generateFood(newSnake));
         } else {
           newSnake.pop();
         }

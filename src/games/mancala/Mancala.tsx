@@ -12,7 +12,7 @@ function cloneState(s: State): State {
   return { pits: [...s.pits], turn: s.turn };
 }
 
-function sow(state: State, pit: number): State {
+function sow(state: State, pit: number): { state: State; extraTurn: boolean } {
   const s = cloneState(state);
   let stones = s.pits[pit];
   s.pits[pit] = 0;
@@ -25,6 +25,8 @@ function sow(state: State, pit: number): State {
     stones--;
   }
   const lastIdx = idx;
+  
+  // Check for capture rule
   if (s.turn === 0 && lastIdx >= 0 && lastIdx <= 5 && s.pits[lastIdx] === 1) {
     const opposite = 12 - lastIdx;
     if (s.pits[opposite] > 0) {
@@ -41,7 +43,11 @@ function sow(state: State, pit: number): State {
       s.pits[opposite] = 0;
     }
   }
-  return s;
+  
+  // Check for extra turn (last stone in own store)
+  const extraTurn = (s.turn === 0 && lastIdx === 6) || (s.turn === 1 && lastIdx === 13);
+  
+  return { state: s, extraTurn };
 }
 
 function isGameOver(state: State): boolean {
@@ -82,9 +88,10 @@ function minimax(state: State, depth: number, alpha: number, beta: number, maxim
   if (maximizing) {
     let maxEval = -Infinity;
     for (const pit of moves) {
-      const ns = sow(state, pit);
-      ns.turn = 0;
-      const eval_ = minimax(ns, depth - 1, alpha, beta, false, player, opponent);
+      const { state: ns, extraTurn } = sow(state, pit);
+      // If extra turn, keep maximizing; otherwise switch to minimizing
+      const nextMaximizing = extraTurn ? true : false;
+      const eval_ = minimax(ns, depth - 1, alpha, beta, nextMaximizing, player, opponent);
       maxEval = Math.max(maxEval, eval_);
       alpha = Math.max(alpha, eval_);
       if (beta <= alpha) break;
@@ -93,9 +100,10 @@ function minimax(state: State, depth: number, alpha: number, beta: number, maxim
   } else {
     let minEval = Infinity;
     for (const pit of moves) {
-      const ns = sow(state, pit);
-      ns.turn = 1;
-      const eval_ = minimax(ns, depth - 1, alpha, beta, true, player, opponent);
+      const { state: ns, extraTurn } = sow(state, pit);
+      // If extra turn, keep minimizing; otherwise switch to maximizing
+      const nextMaximizing = extraTurn ? false : true;
+      const eval_ = minimax(ns, depth - 1, alpha, beta, nextMaximizing, player, opponent);
       minEval = Math.min(minEval, eval_);
       beta = Math.min(beta, eval_);
       if (beta <= alpha) break;
@@ -112,9 +120,8 @@ function getBestMove(state: State): number {
   let bestScore = -Infinity;
   let bestMove = moves[0];
   for (const pit of moves) {
-    const ns = sow(state, pit);
-    ns.turn = 1;
-    const score = minimax(ns, 4, -Infinity, Infinity, true, 2, 1);
+    const { state: ns } = sow(state, pit);
+    const score = minimax(ns, 4, -Infinity, Infinity, false, 2, 1);
     if (score > bestScore) {
       bestScore = score;
       bestMove = pit;
@@ -135,8 +142,7 @@ export default function Mancala() {
     if (gameOver || !isPlayerTurn) return;
     if (pit < 0 || pit > 5 || state.pits[pit] === 0) return;
 
-    let ns = sow(state, pit);
-    ns.turn = 0;
+    const { state: ns, extraTurn } = sow(state, pit);
     setState(ns);
 
     if (isGameOver(ns)) {
@@ -158,11 +164,15 @@ export default function Mancala() {
       return;
     }
 
+    // If extra turn, player goes again
+    if (extraTurn) {
+      return;
+    }
+
     setIsPlayerTurn(false);
     setTimeout(() => {
       const move = getBestMove(ns);
-      let ns2 = sow(ns, move);
-      ns2.turn = 1;
+      const { state: ns2, extraTurn: botExtraTurn } = sow(ns, move);
       setState(ns2);
       if (isGameOver(ns2)) {
         const f = finalize(ns2);
@@ -180,8 +190,37 @@ export default function Mancala() {
             return nw;
           });
         }
+        return;
       }
-      setIsPlayerTurn(true);
+      // If bot gets extra turn, bot goes again
+      if (botExtraTurn) {
+        setTimeout(() => {
+          const move2 = getBestMove(ns2);
+          const { state: ns3 } = sow(ns2, move2);
+          setState(ns3);
+          if (isGameOver(ns3)) {
+            const f = finalize(ns3);
+            setState(f);
+            setGameOver(true);
+            setResult(f.pits[6] > f.pits[13] ? 'You win! 🎉' : f.pits[6] < f.pits[13] ? 'Bot wins!' : 'Draw!');
+            if (f.pits[6] > f.pits[13]) {
+              setWins(w => {
+                const nw = w + 1;
+                setHS(h => {
+                  const best = Math.max(h, nw);
+                  setHighScore('mancala', best);
+                  return best;
+                });
+                return nw;
+              });
+            }
+            return;
+          }
+          setIsPlayerTurn(true);
+        }, 500);
+      } else {
+        setIsPlayerTurn(true);
+      }
     }, 500);
   };
 

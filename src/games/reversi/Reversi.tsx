@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/storage';
 
@@ -122,6 +122,42 @@ export default function Reversi() {
   const [wins, setWins] = useState(0);
   const [highScore, setHS] = useState(getHighScore('reversi'));
 
+  // Auto-pass if player has no valid moves
+  useEffect(() => {
+    if (gameOver || !isPlayerTurn) return;
+    const playerMoves = getValidMoves(board, 1);
+    const botMoves = getValidMoves(board, 2);
+    
+    if (playerMoves.length === 0) {
+      if (botMoves.length === 0) {
+        // Game over
+        const p = countPieces(board, 1), b = countPieces(board, 2);
+        setGameOver(true);
+        setResult(p > b ? 'You win! 🎉' : p < b ? 'Bot wins!' : 'Draw!');
+        if (p > b) {
+          setWins(w => {
+            const nw = w + 1;
+            setHS(h => {
+              const best = Math.max(h, nw);
+              setHighScore('reversi', best);
+              return best;
+            });
+            return nw;
+          });
+        }
+      } else {
+        // Player passes, bot goes
+        setIsPlayerTurn(false);
+        setTimeout(() => {
+          const [br, bc] = getBestMove(board);
+          const nb = applyMove(board, br, bc, 2);
+          setBoard(nb);
+          setIsPlayerTurn(true);
+        }, 400);
+      }
+    }
+  }, [board, isPlayerTurn, gameOver]);
+
   const handleClick = (r: number, c: number) => {
     if (gameOver || !isPlayerTurn) return;
     const flips = getFlips(board, r, c, 1);
@@ -172,8 +208,36 @@ export default function Reversi() {
             return nw;
           });
         }
+      } else if (pm.length === 0) {
+        // Player has no moves, bot goes again
+        setTimeout(() => {
+          const [br2, bc2] = getBestMove(nb2);
+          const nb3 = applyMove(nb2, br2, bc2, 2);
+          setBoard(nb3);
+          const pm2 = getValidMoves(nb3, 1);
+          const bm2 = getValidMoves(nb3, 2);
+          if (pm2.length === 0 && bm2.length === 0) {
+            const p = countPieces(nb3, 1), b = countPieces(nb3, 2);
+            setGameOver(true);
+            setResult(p > b ? 'You win! 🎉' : p < b ? 'Bot wins!' : 'Draw!');
+            if (p > b) {
+              setWins(w => {
+                const nw = w + 1;
+                setHS(h => {
+                  const best = Math.max(h, nw);
+                  setHighScore('reversi', best);
+                  return best;
+                });
+                return nw;
+              });
+            }
+          } else {
+            setIsPlayerTurn(true);
+          }
+        }, 400);
+      } else {
+        setIsPlayerTurn(true);
       }
-      setIsPlayerTurn(true);
     }, 400);
   };
 

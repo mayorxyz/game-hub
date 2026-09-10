@@ -78,6 +78,24 @@ function move(board: Board, dir: 'left' | 'right' | 'up' | 'down'): { board: Boa
   return { board: nb, score: total, moved };
 }
 
+function hasValidMoves(board: Board): boolean {
+  // Check for empty cells
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (board[r][c] === 0) return true;
+    }
+  }
+  // Check for possible merges
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const val = board[r][c];
+      if (r < SIZE - 1 && board[r + 1][c] === val) return true;
+      if (c < SIZE - 1 && board[r][c + 1] === val) return true;
+    }
+  }
+  return false;
+}
+
 export default function Game2048() {
   const [board, setBoard] = useState<Board>(() => addRandom(addRandom(createBoard())));
   const [score, setScore] = useState(0);
@@ -99,6 +117,10 @@ export default function Game2048() {
           if (!moved) return prev;
           const withNew = addRandom(nb);
           setScore(s => s + pts);
+          // Check for game over
+          if (!hasValidMoves(withNew)) {
+            setGameOver(true);
+          }
           return withNew;
         });
       }
@@ -117,6 +139,7 @@ export default function Game2048() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">2048</h1>
       <p className="mb-4">Score: {score}</p>
+      {gameOver && <p className="text-red-400 text-xl font-bold mb-4">Game Over!</p>}
       <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Reset</button>
       <div className="bg-gray-800 p-4 rounded-lg grid grid-cols-4 gap-2">
         {board.flat().map((v, i) => (
