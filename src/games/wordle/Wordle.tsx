@@ -149,7 +149,7 @@ export default function Wordle() {
             </div>
           ))}
           <button onClick={submitGuess} className="min-w-[48px] min-h-[48px] px-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded text-sm font-bold text-white" style={{ touchAction: 'manipulation' }}>⏎</button>
-          <button onClick={() => setCurrent(c => c.slice(0, -1))} className="px-3 h-10 bg-gray-600 rounded text-sm font-bold text-white">⌫</button>
+          <button onClick={() => setCurrent(c => c.slice(0, -1))} className="min-w-[48px] min-h-[48px] px-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-400 rounded text-sm font-bold text-white" style={{ touchAction: 'manipulation' }}>⌫</button>
         </div>
       </div>
     </GameLayout>

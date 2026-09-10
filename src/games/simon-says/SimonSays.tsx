@@ -76,9 +76,10 @@ export default function SimonSays() {
               key={color}
               onClick={() => handlePress(color)}
               disabled={isShowing}
-              className={`rounded-2xl transition-all duration-150 ${
+              className={`min-w-[48px] min-h-[48px] rounded-2xl transition-all duration-150 ${
                 activeColor === color ? ACTIVE_STYLES[color] : COLOR_STYLES[color]
-              } ${isShowing ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+              } ${isShowing ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80 active:opacity-60'}`}
+              style={{ touchAction: 'manipulation' }}
             />
           ))}
         </div>
