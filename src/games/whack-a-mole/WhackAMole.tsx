@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
 
 const G = 3;
 const T = 30;
@@ -69,41 +70,41 @@ export default function WhackAMole() {
   }, [gameEnded, score, highScore]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-4">Whack-a-Mole</h1>
-      <div className="mb-2 flex gap-6">
-        <p>Score: {score} · Time: {time}s</p>
-        <p>Best: {highScore}</p>
-      </div>
-
-      {notStarted && (
-        <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg mb-4">
-          Start
-        </button>
-      )}
-
-      {gameEnded && (
-        <div className="mb-4 text-center">
-          <p className="text-amber-400 mb-2">Time's up! Score: {score}</p>
+    <GameLayout title="Whack-a-Mole" score={`${score} · Time: ${time}s`} highScore={highScore} onReset={start}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {notStarted && (
           <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg">
-            Play Again
+            Start
           </button>
-        </div>
-      )}
+        )}
 
-      <div className="grid grid-cols-3 gap-3">
-        {moles.map((up, i) => (
-          <button
-            key={i}
-            onClick={() => whack(i)}
-            className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl transition-all ${
-              up ? 'bg-amber-700 scale-110' : 'bg-gray-700'
-            }`}
-          >
-            {up ? '🐹' : '🕳️'}
-          </button>
-        ))}
+        {gameEnded && (
+          <div className="text-center">
+            <p className="text-amber-400 mb-2">Time's up! Score: {score}</p>
+            <button onClick={start} className="px-6 py-3 bg-green-600 rounded-lg">
+              Play Again
+            </button>
+          </div>
+        )}
+
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid grid-cols-3 gap-3 p-4">
+            {moles.map((up, i) => (
+              <button
+                key={i}
+                onClick={() => whack(i)}
+                className={`aspect-square rounded-full flex items-center justify-center text-2xl sm:text-3xl transition-all touch-none ${
+                  up ? 'bg-amber-700 scale-110' : 'bg-gray-700'
+                }`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                {up ? '🐹' : '🕳️'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
+    </GameLayout>
   );
 }

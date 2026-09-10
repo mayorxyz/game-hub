@@ -84,10 +84,11 @@ export default function ReactionTimer() {
       score={phase === 'result' ? `${reactionTime}ms` : undefined}
       highScore={best === Infinity ? undefined : `${best}ms`}
     >
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         <button
           onClick={handleClick}
-          className={`w-full max-w-md h-64 sm:h-80 rounded-2xl bg-gradient-to-br ${bgColors[phase]} flex items-center justify-center text-white text-2xl sm:text-3xl font-bold transition-all duration-200 active:scale-95`}
+          className={`w-full max-w-[min(90vw,600px)] h-[min(60vh,400px)] rounded-2xl bg-gradient-to-br ${bgColors[phase]} flex items-center justify-center text-white text-2xl sm:text-3xl font-bold transition-all duration-200 active:scale-95 touch-none`}
+          style={{ touchAction: 'manipulation' }}
         >
           {messages[phase]}
         </button>

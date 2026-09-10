@@ -20,4 +20,23 @@ useEffect(() => {
     }
   }, [over, score]);
 
-  return(<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4"><h1 className="text-3xl font-bold mb-4">Breakout</h1><div className="mb-2 flex gap-6"><p>Score: {score}</p><p>Best: {highScore}</p></div>{over&&<p className="text-red-400 mb-2">Game Over!</p>}{won&&<p className="text-green-400 mb-2">🎉 You Win!</p>}<button onClick={reset} className="px-6 py-3 bg-purple-600 rounded-lg mb-4">{over||won?'Play Again':'Start'}</button><canvas ref={canvasRef} width={W} height={H} className="border border-gray-700 rounded-lg" /></div>)}
+  return(
+    <GameLayout title="Breakout" score={score} highScore={highScore} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {over&&<p className="text-red-400">Game Over!</p>}
+        {won&&<p className="text-green-400">🎉 You Win!</p>}
+        <button onClick={reset} className="px-6 py-3 bg-purple-600 rounded-lg">{over||won?'Play Again':'Start'}</button>
+        
+        {/* Responsive Canvas */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[4/5]">
+          <canvas 
+            ref={canvasRef} 
+            width={W} 
+            height={H} 
+            className="absolute inset-0 w-full h-full border border-gray-700 rounded-lg touch-none"
+            style={{ touchAction: 'none' }}
+          />
+        </div>
+      </div>
+    </GameLayout>
+  )}

@@ -82,19 +82,31 @@ export default function AimTrainer() {
           <button onClick={start} className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg font-bold">Start</button>
         )}
         {timeLeft === 0 && <p className="text-amber-400 text-xl font-bold">Score: {score} | Accuracy: {accuracy}%</p>}
-        <div
-          className="relative bg-gray-800 rounded-xl border border-gray-700 cursor-crosshair overflow-hidden"
-          style={{ width: W, height: H, maxWidth: '100%' }}
-          onClick={handleMiss}
-        >
-          {targets.map(t => (
-            <button
-              key={t.id}
-              onClick={(e) => { e.stopPropagation(); hitTarget(t.id); }}
-              className="absolute rounded-full bg-gradient-to-br from-red-500 to-red-700 border-2 border-white hover:scale-110 transition-transform"
-              style={{ left: t.x - t.r, top: t.y - t.r, width: t.r * 2, height: t.r * 2 }}
-            />
-          ))}
+        {/* Responsive Game Area */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div
+            className="absolute inset-0 bg-gray-800 rounded-xl border border-gray-700 cursor-crosshair overflow-hidden touch-none"
+            onClick={handleMiss}
+            style={{ touchAction: 'none' }}
+          >
+            {targets.map(t => {
+              // Scale coordinates based on container size
+              const scale = 1; // Targets use absolute coordinates within WxH
+              return (
+                <button
+                  key={t.id}
+                  onClick={(e) => { e.stopPropagation(); hitTarget(t.id); }}
+                  className="absolute rounded-full bg-gradient-to-br from-red-500 to-red-700 border-2 border-white hover:scale-110 transition-transform"
+                  style={{ 
+                    left: `${(t.x - t.r) / W * 100}%`, 
+                    top: `${(t.y - t.r) / H * 100}%`, 
+                    width: `${(t.r * 2) / W * 100}%`, 
+                    height: `${(t.r * 2) / H * 100}%` 
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
     </GameLayout>

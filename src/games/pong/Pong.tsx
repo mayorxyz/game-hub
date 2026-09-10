@@ -137,7 +137,16 @@ export default function Pong() {
         {!stateRef.current.running && !gameOver && (
           <button onClick={reset} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-bold">Start</button>
         )}
-        <canvas ref={canvasRef} width={W} height={H} className="border border-gray-700 rounded-lg max-w-full cursor-none" />
+        {/* Responsive Canvas */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[4/3]">
+          <canvas 
+            ref={canvasRef} 
+            width={W} 
+            height={H} 
+            className="absolute inset-0 w-full h-full border border-gray-700 rounded-lg cursor-none touch-none"
+            style={{ touchAction: 'none' }}
+          />
+        </div>
         <p className="text-gray-500 text-xs">Move mouse/finger to control paddle · First to {WIN_SCORE}</p>
       </div>
     </GameLayout>

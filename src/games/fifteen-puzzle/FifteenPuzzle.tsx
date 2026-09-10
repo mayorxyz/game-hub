@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
 const SIZE = 4;
 type Board = number[];
 
@@ -70,27 +71,27 @@ export default function FifteenPuzzle() {
   }, [won, moves, bestMoves]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-4">15 Puzzle</h1>
-      <div className="mb-2 flex gap-6">
-        <p>Moves: {moves}</p>
-        {bestMoves !== Infinity && <p>Best: {bestMoves}</p>}
+    <GameLayout title="15 Puzzle" score={`${moves} moves`} highScore={bestMoves !== Infinity ? bestMoves : undefined} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {won && <p className="text-green-400">🎉 Solved!</p>}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid grid-cols-4 gap-1 bg-gray-800 p-2 rounded-xl">
+            {board.map((v, i) => (
+              <button
+                key={i}
+                onClick={() => handleClick(i)}
+                className={`aspect-square flex items-center justify-center rounded-lg text-lg sm:text-xl font-bold ${
+                  v === 0 ? 'bg-transparent' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                {v || ''}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      {won && <p className="text-green-400 mb-2">🎉 Solved!</p>}
-      <button onClick={reset} className="px-4 py-2 bg-blue-600 rounded mb-4">Reset</button>
-      <div className="grid grid-cols-4 gap-1 bg-gray-800 p-2 rounded-xl w-72">
-        {board.map((v, i) => (
-          <button
-            key={i}
-            onClick={() => handleClick(i)}
-            className={`aspect-square flex items-center justify-center rounded-lg text-xl font-bold ${
-              v === 0 ? 'bg-transparent' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-            }`}
-          >
-            {v || ''}
-          </button>
-        ))}
-      </div>
-    </div>
+    </GameLayout>
   );
 }

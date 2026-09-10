@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
+import TouchControlContainer from '../../components/ui/controls/TouchControlContainer';
 const W=320,H=480,G=0.5,J=-8,PW=50,GAP=130;interface Pipe{x:number;topH:number;passed:boolean}
 export default function FlappyBird(){const c=useRef<HTMLCanvasElement>(null);const s=useRef({by:H/2,v:0,pipes:[] as Pipe[],score:0,running:false,frame:0});const[score,setScore]=useState(0);const[over,setOver]=useState(false);const[highScore,setHighScoreState]=useState(getHighScore('flappy-bird'));const a=useRef<number>(0);
 const reset=()=>{const st=s.current;st.by=H/2;st.v=0;st.pipes=[];st.score=0;st.running=true;st.frame=0;setScore(0);setOver(false)};const jump=()=>{if(s.current.running)s.current.v=J};
@@ -14,4 +16,26 @@ useEffect(() => {
     }
   }, [over, score]);
 
-  return(<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4"><h1 className="text-3xl font-bold mb-4">Flappy Bird</h1><div className="mb-2 flex gap-6"><p>Score: {score}</p><p>Best: {highScore}</p></div>{over&&<p className="text-red-400 mb-2">Game Over!</p>}<button onClick={reset} className="px-6 py-3 bg-yellow-600 rounded-lg mb-4">{over?'Play Again':'Start'}</button><canvas ref={c} width={W} height={H} className="border border-gray-700 rounded-lg cursor-pointer" onClick={jump} /><p className="text-gray-500 text-xs mt-2">Tap or Space to flap</p></div>)}
+  return(
+    <GameLayout title="Flappy Bird" score={score} highScore={highScore} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {over&&<p className="text-red-400">Game Over!</p>}
+        <button onClick={reset} className="px-6 py-3 bg-yellow-600 rounded-lg">{over?'Play Again':'Start'}</button>
+        
+        {/* Responsive Canvas */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[2/3]">
+          <canvas 
+            ref={c} 
+            width={W} 
+            height={H} 
+            className="absolute inset-0 w-full h-full border border-gray-700 rounded-lg cursor-pointer touch-none"
+            onClick={jump}
+            onTouchStart={(e) => { e.preventDefault(); jump(); }}
+            style={{ touchAction: 'none' }}
+          />
+        </div>
+        
+        <p className="text-gray-500 text-xs">Tap or Space to flap</p>
+      </div>
+    </GameLayout>
+  )}
