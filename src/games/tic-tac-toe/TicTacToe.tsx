@@ -133,23 +133,29 @@ export default function TicTacToe() {
 
   return (
     <GameLayout title="Tic-Tac-Toe" score={`Wins: ${wins}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="grid grid-cols-3 gap-2 w-60 h-60 sm:w-72 sm:h-72">
-          {board.map((cell, i) => (
-            <button
-              key={i}
-              onClick={() => handleClick(i)}
-              className={`rounded-xl text-3xl sm:text-4xl font-bold flex items-center justify-center transition-all ${
-                cell === 'X' ? 'bg-blue-600 text-white' :
-                cell === 'O' ? 'bg-red-600 text-white' :
-                'bg-gray-700 hover:bg-gray-600'
-              }`}
-            >
-              {cell}
-            </button>
-          ))}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid grid-cols-3 gap-2">
+            {board.map((cell, i) => (
+              <button
+                key={i}
+                onClick={() => handleClick(i)}
+                className={`rounded-xl text-3xl sm:text-4xl font-bold flex items-center justify-center transition-all min-h-[48px] min-w-[48px] ${
+                  cell === 'X' ? 'bg-blue-600 text-white' :
+                  cell === 'O' ? 'bg-red-600 text-white' :
+                  'bg-gray-700 hover:bg-gray-600 active:bg-gray-500'
+                }`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                {cell}
+              </button>
+            ))}
+          </div>
         </div>
+        
         <p className="text-gray-500 text-sm">You are X · Bot is O (unbeatable)</p>
       </div>
     </GameLayout>

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
 
 const SIZE = 4;
 
@@ -102,6 +103,7 @@ export default function Game2048() {
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [highScore, setHighScoreState] = useState(getHighScore('2048'));
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -146,24 +148,74 @@ export default function Game2048() {
     setBoard(addRandom(addRandom(createBoard())));
     setScore(0);
     setGameOver(false);
+    setHighScoreState(getHighScore('2048'));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || gameOver) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    const threshold = 30;
+
+    if (Math.max(absX, absY) < threshold) return;
+
+    let dir: 'left' | 'right' | 'up' | 'down' | null = null;
+    if (absX > absY) {
+      dir = deltaX > 0 ? 'right' : 'left';
+    } else {
+      dir = deltaY > 0 ? 'down' : 'up';
+    }
+
+    if (dir) {
+      setBoard(prev => {
+        const { board: nb, score: pts, moved } = move(prev, dir);
+        if (!moved) return prev;
+        const withNew = addRandom(nb);
+        setScore(s => s + pts);
+        if (!hasValidMoves(withNew)) {
+          setGameOver(true);
+        }
+        return withNew;
+      });
+    }
+    touchStartRef.current = null;
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-4">2048</h1>
-      <div className="mb-4 flex gap-6">
-        <p>Score: {score}</p>
-        <p>Best: {highScore}</p>
-      </div>
-      {gameOver && <p className="text-red-400 text-xl font-bold mb-4">Game Over!</p>}
-      <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">Reset</button>
-      <div className="bg-gray-800 p-4 rounded-lg grid grid-cols-4 gap-2">
-        {board.flat().map((v, i) => (
-          <div key={i} className={`w-16 h-16 flex items-center justify-center rounded text-2xl font-bold ${v ? 'bg-blue-600' : 'bg-gray-700'}`}>
-            {v || ''}
+    <GameLayout title="2048" score={score} highScore={highScore} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {gameOver && <p className="text-red-400 text-xl font-bold">Game Over!</p>}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div 
+            className="absolute inset-0 bg-gray-800 p-2 sm:p-4 rounded-lg grid grid-cols-4 gap-1 sm:gap-2 touch-pan-y"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            style={{ touchAction: 'pan-y' }}
+          >
+            {board.flat().map((v, i) => (
+              <div 
+                key={i} 
+                className={`aspect-square flex items-center justify-center rounded text-base sm:text-xl md:text-2xl font-bold transition-all ${
+                  v ? 'bg-blue-600' : 'bg-gray-700'
+                }`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                {v || ''}
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+        
+        <p className="text-gray-500 text-xs">Swipe or use arrow keys</p>
       </div>
-    </div>
+    </GameLayout>
   );
 }

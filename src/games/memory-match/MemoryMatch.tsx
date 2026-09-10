@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import GameLayout from '../../components/ui/GameLayout';
 
 const EMOJIS = ['🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎸', '🎺'];
 
@@ -50,6 +51,7 @@ export default function MemoryMatch() {
     setCards(createCards());
     setSelected([]);
     setMoves(0);
+    setBestMoves(storedBest > 0 ? 10000 - storedBest : Infinity);
   };
 
   const allMatched = cards.every(c => c.matched);
@@ -66,42 +68,32 @@ export default function MemoryMatch() {
   }, [allMatched, moves, bestMoves]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-4">Memory Match</h1>
-      <div className="mb-4 flex gap-6">
-        <p>Moves: {moves}</p>
-        {bestMoves !== Infinity && <p>Best: {bestMoves}</p>}
-      </div>
-      {allMatched && (
-        <div className="mb-4 text-center">
-          <p className="text-green-400 text-xl font-bold mb-2">🎉 You Win!</p>
-          <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg">
-            Play Again
-          </button>
+    <GameLayout title="Memory Match" score={`${moves} moves`} highScore={bestMoves !== Infinity ? bestMoves : undefined} onReset={reset}>
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {allMatched && <p className="text-green-400 text-xl font-bold">🎉 You Win!</p>}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid grid-cols-4 gap-2">
+            {cards.map((card, i) => (
+              <button
+                key={card.id}
+                onClick={() => handleClick(i)}
+                className={`rounded-lg text-2xl flex items-center justify-center transition-all min-h-[48px] min-w-[48px] ${
+                  card.matched
+                    ? 'bg-green-600'
+                    : card.flipped
+                    ? 'bg-gray-700'
+                    : 'bg-purple-600 hover:bg-purple-500 active:bg-purple-500'
+                }`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                {(card.flipped || card.matched) ? card.emoji : '?'}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
-      {!allMatched && (
-        <button onClick={reset} className="px-6 py-3 bg-blue-600 rounded-lg mb-4">
-          Reset
-        </button>
-      )}
-      <div className="grid grid-cols-4 gap-2">
-        {cards.map((card, i) => (
-          <button
-            key={card.id}
-            onClick={() => handleClick(i)}
-            className={`w-16 h-16 rounded-lg text-2xl flex items-center justify-center transition-all ${
-              card.matched
-                ? 'bg-green-600'
-                : card.flipped
-                ? 'bg-gray-700'
-                : 'bg-purple-600 hover:bg-purple-500'
-            }`}
-          >
-            {(card.flipped || card.matched) ? card.emoji : '?'}
-          </button>
-        ))}
       </div>
-    </div>
+    </GameLayout>
   );
 }

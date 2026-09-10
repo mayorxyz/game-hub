@@ -170,45 +170,50 @@ export default function Battleship() {
       highScore={highScore}
       onReset={reset}
     >
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
 
         {/* Player's board (shows bot's attacks on player) */}
-        <div className="text-center">
-          <p className="text-gray-400 text-sm mb-2">Your Waters (Bot's attacks)</p>
-          <div className="inline-grid gap-[1px] bg-gray-700 p-1 rounded" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
-            {playerBoard.flat().map((cell, i) => (
-              <div key={i} className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs rounded-sm ${
-                cell === 'hit' ? 'bg-red-600' : cell === 'miss' ? 'bg-blue-900' : 'bg-gray-800'
-              }`}>
-                {cell === 'hit' ? '💥' : cell === 'miss' ? '·' : ''}
-              </div>
-            ))}
+        <div className="w-full max-w-[min(90vw,40vh)]">
+          <p className="text-gray-400 text-sm mb-2 text-center">Your Waters (Bot's attacks)</p>
+          <div className="relative aspect-square">
+            <div className="absolute inset-0 grid gap-[1px] bg-gray-700 p-1 rounded overflow-hidden" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
+              {playerBoard.flat().map((cell, i) => (
+                <div key={i} className={`flex items-center justify-center text-xs rounded-sm min-h-[32px] min-w-[32px] ${
+                  cell === 'hit' ? 'bg-red-600' : cell === 'miss' ? 'bg-blue-900' : 'bg-gray-800'
+                }`}>
+                  {cell === 'hit' ? '💥' : cell === 'miss' ? '·' : ''}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Bot's board (player attacks here) */}
-        <div className="text-center">
-          <p className="text-gray-400 text-sm mb-2">Enemy Waters (Your attacks)</p>
-          <div className="inline-grid gap-[1px] bg-gray-700 p-1 rounded" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
-            {botBoard.flat().map((cell, i) => {
-              const r = Math.floor(i / SIZE), c = i % SIZE;
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleAttack(r, c)}
-                  disabled={!isPlayerTurn || cell !== 'empty' || gameOver}
-                  className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs rounded-sm transition-colors ${
-                    cell === 'hit' ? 'bg-red-600' :
-                    cell === 'miss' ? 'bg-blue-900' :
-                    isPlayerTurn && !gameOver ? 'bg-gray-800 hover:bg-gray-600 cursor-pointer' :
-                    'bg-gray-800 cursor-not-allowed'
-                  }`}
-                >
-                  {cell === 'hit' ? '🔥' : cell === 'miss' ? '·' : ''}
-                </button>
-              );
-            })}
+        <div className="w-full max-w-[min(90vw,40vh)]">
+          <p className="text-gray-400 text-sm mb-2 text-center">Enemy Waters (Your attacks)</p>
+          <div className="relative aspect-square">
+            <div className="absolute inset-0 grid gap-[1px] bg-gray-700 p-1 rounded overflow-hidden" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
+              {botBoard.flat().map((cell, i) => {
+                const r = Math.floor(i / SIZE), c = i % SIZE;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleAttack(r, c)}
+                    disabled={!isPlayerTurn || cell !== 'empty' || gameOver}
+                    className={`flex items-center justify-center text-xs rounded-sm transition-colors min-h-[32px] min-w-[32px] ${
+                      cell === 'hit' ? 'bg-red-600' :
+                      cell === 'miss' ? 'bg-blue-900' :
+                      isPlayerTurn && !gameOver ? 'bg-gray-800 hover:bg-gray-600 cursor-pointer' :
+                      'bg-gray-800 cursor-not-allowed'
+                    }`}
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    {cell === 'hit' ? '🔥' : cell === 'miss' ? '·' : ''}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

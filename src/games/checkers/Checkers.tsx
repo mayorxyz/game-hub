@@ -153,31 +153,37 @@ export default function Checkers() {
 
   return (
     <GameLayout title="Checkers" score={`Wins: ${wins}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="inline-grid gap-0 border-2 border-gray-600 rounded" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
-          {board.flat().map((piece, i) => {
-            const r = Math.floor(i / SIZE), c = i % SIZE;
-            const isDark = (r + c) % 2 === 1;
-            const isSelected = selected && selected[0] === r && selected[1] === c;
-            const isValidTarget = validMoves.some(m => m.to[0] === r && m.to[1] === c);
-            return (
-              <button
-                key={i}
-                onClick={() => handleClick(r, c)}
-                className={`w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center ${isDark ? 'bg-green-800' : 'bg-amber-100'} ${isValidTarget ? 'ring-2 ring-yellow-400' : ''} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
-              >
-                {piece && (
-                  <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    piece.player === 1 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'
-                  }`}>
-                    {piece.king ? '♛' : ''}
-                  </div>
-                )}
-              </button>
-            );
-          })}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid gap-0 border-2 border-gray-600 rounded overflow-hidden" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
+            {board.flat().map((piece, i) => {
+              const r = Math.floor(i / SIZE), c = i % SIZE;
+              const isDark = (r + c) % 2 === 1;
+              const isSelected = selected && selected[0] === r && selected[1] === c;
+              const isValidTarget = validMoves.some(m => m.to[0] === r && m.to[1] === c);
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleClick(r, c)}
+                  className={`flex items-center justify-center min-h-[48px] min-w-[48px] ${isDark ? 'bg-green-800' : 'bg-amber-100'} ${isValidTarget ? 'ring-2 ring-yellow-400' : ''} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  {piece && (
+                    <div className={`w-3/4 h-3/4 rounded-full flex items-center justify-center text-xs font-bold ${
+                      piece.player === 1 ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'
+                    }`}>
+                      {piece.king ? '♛' : ''}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
+        
         <p className="text-gray-500 text-xs">You are red · Bot is black</p>
       </div>
     </GameLayout>

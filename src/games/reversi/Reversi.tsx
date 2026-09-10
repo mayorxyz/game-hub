@@ -251,24 +251,32 @@ export default function Reversi() {
 
   return (
     <GameLayout title="Reversi" score={`⚫${countPieces(board,1)} ⚪${countPieces(board,2)}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="bg-green-800 p-2 rounded-xl inline-grid gap-[1px]" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
-          {board.flat().map((cell, i) => {
-            const r = Math.floor(i / SIZE), c = i % SIZE;
-            const isValid = validMoves.some(([vr, vc]) => vr === r && vc === c);
-            return (
-              <button
-                key={i}
-                onClick={() => handleClick(r, c)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-sm ${isValid ? 'bg-green-600 hover:bg-green-500' : 'bg-green-700'}`}
-              >
-                {cell === 1 && <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-900" />}
-                {cell === 2 && <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white" />}
-              </button>
-            );
-          })}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 bg-green-800 p-2 rounded-xl overflow-hidden">
+            <div className="grid gap-[1px] h-full" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
+              {board.flat().map((cell, i) => {
+                const r = Math.floor(i / SIZE), c = i % SIZE;
+                const isValid = validMoves.some(([vr, vc]) => vr === r && vc === c);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleClick(r, c)}
+                    className={`flex items-center justify-center rounded-sm min-h-[48px] min-w-[48px] ${isValid ? 'bg-green-600 hover:bg-green-500 active:bg-green-500' : 'bg-green-700'}`}
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    {cell === 1 && <div className="w-3/4 h-3/4 rounded-full bg-gray-900" />}
+                    {cell === 2 && <div className="w-3/4 h-3/4 rounded-full bg-white" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
+        
         <p className="text-gray-500 text-xs">You are ⚫ · Bot is ⚪</p>
       </div>
     </GameLayout>

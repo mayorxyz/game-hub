@@ -190,23 +190,29 @@ export default function ConnectFour() {
 
   return (
     <GameLayout title="Connect Four" score={`Wins: ${wins}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="bg-blue-800 p-2 sm:p-3 rounded-xl">
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
-            {board.flat().map((cell, i) => (
-              <button
-                key={i}
-                onClick={() => handleClick(i % COLS)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all ${
-                  cell === 1 ? 'bg-red-500' :
-                  cell === 2 ? 'bg-yellow-400' :
-                  'bg-blue-900 hover:bg-blue-950'
-                }`}
-              />
-            ))}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-[7/6]">
+          <div className="absolute inset-0 bg-blue-800 p-2 sm:p-3 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 h-full">
+              {board.flat().map((cell, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleClick(i % COLS)}
+                  className={`aspect-square rounded-full transition-all min-h-[48px] min-w-[48px] ${
+                    cell === 1 ? 'bg-red-500' :
+                    cell === 2 ? 'bg-yellow-400' :
+                    'bg-blue-900 hover:bg-blue-950 active:bg-blue-950'
+                  }`}
+                  style={{ touchAction: 'manipulation' }}
+                />
+              ))}
+            </div>
           </div>
         </div>
+        
         <p className="text-gray-500 text-sm">You are 🔴 · Bot is 🟡</p>
       </div>
     </GameLayout>
