@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getHighScore, setHighScore } from '../../lib/persistence';
 const SIZE = 4;
 type Board = number[];
 
@@ -38,6 +39,8 @@ export default function FifteenPuzzle() {
   const [board, setBoard] = useState<Board>(createBoard);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
+  const storedBest = getHighScore('fifteen-puzzle');
+  const [bestMoves, setBestMoves] = useState<number>(storedBest > 0 ? 10000 - storedBest : Infinity);
 
   const handleClick = (idx: number) => {
     if (won) return;
@@ -59,10 +62,20 @@ export default function FifteenPuzzle() {
     setWon(false);
   };
 
+  useEffect(() => {
+    if (won && moves > 0 && moves < bestMoves) {
+      setBestMoves(moves);
+      setHighScore('fifteen-puzzle', 10000 - moves);
+    }
+  }, [won, moves, bestMoves]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-4">15 Puzzle</h1>
-      <p className="mb-2">Moves: {moves}</p>
+      <div className="mb-2 flex gap-6">
+        <p>Moves: {moves}</p>
+        {bestMoves !== Infinity && <p>Best: {bestMoves}</p>}
+      </div>
       {won && <p className="text-green-400 mb-2">🎉 Solved!</p>}
       <button onClick={reset} className="px-4 py-2 bg-blue-600 rounded mb-4">Reset</button>
       <div className="grid grid-cols-4 gap-1 bg-gray-800 p-2 rounded-xl w-72">

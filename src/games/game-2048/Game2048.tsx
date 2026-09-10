@@ -122,15 +122,6 @@ export default function Game2048() {
           // Check for game over
           if (!hasValidMoves(withNew)) {
             setGameOver(true);
-            // Update high score
-            setScore(currentScore => {
-              const currentHigh = getHighScore('2048');
-              if (currentScore > currentHigh) {
-                setHighScore('2048', currentScore);
-                setHighScoreState(currentScore);
-              }
-              return currentScore;
-            });
           }
           return withNew;
         });
@@ -139,6 +130,17 @@ export default function Game2048() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [gameOver]);
+
+  // Update high score when game ends
+  useEffect(() => {
+    if (gameOver && score > 0) {
+      const currentHigh = getHighScore('2048');
+      if (score > currentHigh) {
+        setHighScore('2048', score);
+        setHighScoreState(score);
+      }
+    }
+  }, [gameOver, score]);
 
   const reset = () => {
     setBoard(addRandom(addRandom(createBoard())));

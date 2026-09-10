@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/storage';
 
@@ -124,6 +124,7 @@ export default function ConnectFour() {
   const [result, setResult] = useState('');
   const [wins, setWins] = useState(0);
   const [highScore, setHS] = useState(getHighScore('connect-four'));
+  const botTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleClick = (col: number) => {
     if (gameOver || !isPlayerTurn || board[0][col] !== 0) return;
@@ -152,7 +153,7 @@ export default function ConnectFour() {
     }
 
     setIsPlayerTurn(false);
-    setTimeout(() => {
+    botTimeoutRef.current = setTimeout(() => {
       const botCol = getBestMove(nb);
       const nb2 = dropPiece(nb, botCol, 2);
       if (nb2) {
@@ -170,11 +171,22 @@ export default function ConnectFour() {
   };
 
   const reset = () => {
+    if (botTimeoutRef.current) {
+      clearTimeout(botTimeoutRef.current);
+    }
     setBoard(createBoard());
     setIsPlayerTurn(true);
     setGameOver(false);
     setResult('');
   };
+
+  useEffect(() => {
+    return () => {
+      if (botTimeoutRef.current) {
+        clearTimeout(botTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <GameLayout title="Connect Four" score={`Wins: ${wins}`} highScore={highScore} onReset={reset}>

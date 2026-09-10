@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/storage';
 
@@ -67,6 +67,7 @@ export default function TicTacToe() {
   const [result, setResult] = useState<string | null>(null);
   const [wins, setWins] = useState(0);
   const [highScore, setHS] = useState(getHighScore('tic-tac-toe'));
+  const botTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleClick = (idx: number) => {
     if (board[idx] || gameOver || !isPlayerTurn) return;
@@ -96,7 +97,7 @@ export default function TicTacToe() {
     }
 
     setIsPlayerTurn(false);
-    setTimeout(() => {
+    botTimeoutRef.current = setTimeout(() => {
       const botMove = getBestMove(newBoard);
       newBoard[botMove] = 'O';
       setBoard(newBoard);
@@ -113,11 +114,22 @@ export default function TicTacToe() {
   };
 
   const reset = () => {
+    if (botTimeoutRef.current) {
+      clearTimeout(botTimeoutRef.current);
+    }
     setBoard(Array(9).fill(null));
     setIsPlayerTurn(true);
     setGameOver(false);
     setResult(null);
   };
+
+  useEffect(() => {
+    return () => {
+      if (botTimeoutRef.current) {
+        clearTimeout(botTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <GameLayout title="Tic-Tac-Toe" score={`Wins: ${wins}`} highScore={highScore} onReset={reset}>

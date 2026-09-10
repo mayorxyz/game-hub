@@ -52,15 +52,6 @@ export default function Snake() {
         if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID || prev.some(s => s.x === head.x && s.y === head.y)) {
           setGameOver(true);
           setRunning(false);
-          // Update high score
-          setScore(currentScore => {
-            const currentHigh = getHighScore('snake');
-            if (currentScore > currentHigh) {
-              setHighScore('snake', currentScore);
-              setHighScoreState(currentScore);
-            }
-            return currentScore;
-          });
           return prev;
         }
 
@@ -76,6 +67,17 @@ export default function Snake() {
     }, 150);
     return () => clearInterval(interval);
   }, [running, gameOver, food]);
+
+  // Update high score when game ends
+  useEffect(() => {
+    if (gameOver && score > 0) {
+      const currentHigh = getHighScore('snake');
+      if (score > currentHigh) {
+        setHighScore('snake', score);
+        setHighScoreState(score);
+      }
+    }
+  }, [gameOver, score]);
 
   const reset = () => {
     setSnake([{ x: 10, y: 10 }]);
