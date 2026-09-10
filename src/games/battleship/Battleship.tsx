@@ -93,9 +93,9 @@ const totalShipCells = SHIPS.reduce((a, b) => a + b, 0);
 
 export default function Battleship() {
   // Player's own ship placement (hidden from bot, bot attacks this)
-  const [playerShips] = useState(() => placeShips());
+  const [playerShips, setPlayerShips] = useState(() => placeShips());
   // Bot's ship placement (hidden from player, player attacks this)
-  const [botShips] = useState(() => placeShips());
+  const [botShips, setBotShips] = useState(() => placeShips());
 
   // Player's board: shows bot's attacks on player
   const [playerBoard, setPlayerBoard] = useState<CellState[][]>(emptyBoard);
@@ -154,8 +154,13 @@ export default function Battleship() {
   }, [gameOver, isPlayerTurn, botBoard, botShips, playerBoard, playerShips, playerHitsOnBot, botHitsOnPlayer]);
 
   const reset = useCallback(() => {
-    // Full state reset without page reload
-    window.location.reload();
+    setPlayerShips(placeShips());
+    setBotShips(placeShips());
+    setPlayerBoard(emptyBoard());
+    setBotBoard(emptyBoard());
+    setIsPlayerTurn(true);
+    setGameOver(false);
+    setResult('');
   }, []);
 
   return (

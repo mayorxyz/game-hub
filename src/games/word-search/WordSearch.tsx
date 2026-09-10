@@ -51,7 +51,7 @@ function generateGrid(words: string[]): { grid: string[][]; positions: Map<strin
 }
 
 export default function WordSearch() {
-  const [data] = useState(() => generateGrid(WORDS));
+  const [data, setData] = useState(() => generateGrid(WORDS));
   const [found, setFound] = useState<Set<string>>(new Set());
   const [highScore, setHS] = useState(getHighScore('word-search'));
   const [won, setWon] = useState(false);
@@ -71,7 +71,11 @@ export default function WordSearch() {
     }
   };
 
-  const reset = () => window.location.reload();
+  const reset = () => {
+    setData(generateGrid(WORDS));
+    setFound(new Set());
+    setWon(false);
+  };
 
   return (
     <GameLayout title="Word Search" score={`${found.size}/${WORDS.length}`} highScore={highScore} onReset={reset}>

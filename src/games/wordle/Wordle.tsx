@@ -80,7 +80,10 @@ export default function Wordle() {
   }, [current, gameOver]);
 
   const reset = () => {
-    window.location.reload();
+    setGuesses([]);
+    setCurrent('');
+    setGameOver(false);
+    setWon(false);
   };
 
   const rows = Array.from({ length: MAX_GUESSES }, (_, i) => {

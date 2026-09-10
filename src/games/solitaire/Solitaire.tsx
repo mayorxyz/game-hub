@@ -19,30 +19,33 @@ function createDeck(): Card[] {
 
 const RANK_NAMES: Record<number, string> = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 
+function initializeGame(): { stock: Card[]; tableau: Card[][] } {
+  const deck = createDeck().map(c => ({ ...c, faceUp: false }));
+  const tabs: Card[][] = [[], [], [], [], [], [], []];
+  let di = 0;
+  for (let col = 0; col < 7; col++) {
+    for (let row = 0; row <= col; row++) {
+      const card = { ...deck[di], faceUp: row === col };
+      tabs[col].push(card);
+      di++;
+    }
+  }
+  return {
+    stock: deck.slice(di).map(c => ({ ...c, faceUp: false })),
+    tableau: tabs,
+  };
+}
+
 export default function Solitaire() {
-  const [stock, setStock] = useState<Card[]>(() => createDeck().map(c => ({ ...c, faceUp: false })));
+  const initial = initializeGame();
+  const [stock, setStock] = useState<Card[]>(initial.stock);
   const [waste, setWaste] = useState<Card[]>([]);
   const [foundations, setFoundations] = useState<Card[][]>([[], [], [], []]);
-  const [tableau, setTableau] = useState<Card[][]>([[], [], [], [], [], [], []]);
+  const [tableau, setTableau] = useState<Card[][]>(initial.tableau);
   const [moves, setMoves] = useState(0);
   const [highScore, setHS] = useState(getHighScore('solitaire'));
   const [won, setWon] = useState(false);
   const [selected, setSelected] = useState<{ source: string; idx: number } | null>(null);
-
-  useEffect(() => {
-    const deck = createDeck().map(c => ({ ...c, faceUp: false }));
-    const tabs: Card[][] = [[], [], [], [], [], [], []];
-    let di = 0;
-    for (let col = 0; col < 7; col++) {
-      for (let row = 0; row <= col; row++) {
-        const card = { ...deck[di], faceUp: row === col };
-        tabs[col].push(card);
-        di++;
-      }
-    }
-    setTableau(tabs);
-    setStock(deck.slice(di).map(c => ({ ...c, faceUp: false })));
-  }, []);
 
   const drawCard = () => {
     if (stock.length === 0) {
@@ -152,7 +155,16 @@ export default function Solitaire() {
     }
   };
 
-  const reset = () => window.location.reload();
+  const reset = () => {
+    const initial = initializeGame();
+    setStock(initial.stock);
+    setWaste([]);
+    setFoundations([[], [], [], []]);
+    setTableau(initial.tableau);
+    setMoves(0);
+    setWon(false);
+    setSelected(null);
+  };
 
   const totalFound = foundations.reduce((sum, f) => sum + f.length, 0);
 
