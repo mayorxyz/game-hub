@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/storage';
 
@@ -122,6 +122,42 @@ export default function Reversi() {
   const [wins, setWins] = useState(0);
   const [highScore, setHS] = useState(getHighScore('reversi'));
 
+  // Auto-pass if player has no valid moves
+  useEffect(() => {
+    if (gameOver || !isPlayerTurn) return;
+    const playerMoves = getValidMoves(board, 1);
+    const botMoves = getValidMoves(board, 2);
+    
+    if (playerMoves.length === 0) {
+      if (botMoves.length === 0) {
+        // Game over
+        const p = countPieces(board, 1), b = countPieces(board, 2);
+        setGameOver(true);
+        setResult(p > b ? 'You win! 🎉' : p < b ? 'Bot wins!' : 'Draw!');
+        if (p > b) {
+          setWins(w => {
+            const nw = w + 1;
+            setHS(h => {
+              const best = Math.max(h, nw);
+              setHighScore('reversi', best);
+              return best;
+            });
+            return nw;
+          });
+        }
+      } else {
+        // Player passes, bot goes
+        setIsPlayerTurn(false);
+        setTimeout(() => {
+          const [br, bc] = getBestMove(board);
+          const nb = applyMove(board, br, bc, 2);
+          setBoard(nb);
+          setIsPlayerTurn(true);
+        }, 400);
+      }
+    }
+  }, [board, isPlayerTurn, gameOver]);
+
   const handleClick = (r: number, c: number) => {
     if (gameOver || !isPlayerTurn) return;
     const flips = getFlips(board, r, c, 1);
@@ -172,8 +208,36 @@ export default function Reversi() {
             return nw;
           });
         }
+      } else if (pm.length === 0) {
+        // Player has no moves, bot goes again
+        setTimeout(() => {
+          const [br2, bc2] = getBestMove(nb2);
+          const nb3 = applyMove(nb2, br2, bc2, 2);
+          setBoard(nb3);
+          const pm2 = getValidMoves(nb3, 1);
+          const bm2 = getValidMoves(nb3, 2);
+          if (pm2.length === 0 && bm2.length === 0) {
+            const p = countPieces(nb3, 1), b = countPieces(nb3, 2);
+            setGameOver(true);
+            setResult(p > b ? 'You win! 🎉' : p < b ? 'Bot wins!' : 'Draw!');
+            if (p > b) {
+              setWins(w => {
+                const nw = w + 1;
+                setHS(h => {
+                  const best = Math.max(h, nw);
+                  setHighScore('reversi', best);
+                  return best;
+                });
+                return nw;
+              });
+            }
+          } else {
+            setIsPlayerTurn(true);
+          }
+        }, 400);
+      } else {
+        setIsPlayerTurn(true);
       }
-      setIsPlayerTurn(true);
     }, 400);
   };
 
@@ -187,24 +251,32 @@ export default function Reversi() {
 
   return (
     <GameLayout title="Reversi" score={`⚫${countPieces(board,1)} ⚪${countPieces(board,2)}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {result && <p className="text-xl font-bold text-amber-400">{result}</p>}
-        <div className="bg-green-800 p-2 rounded-xl inline-grid gap-[1px]" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
-          {board.flat().map((cell, i) => {
-            const r = Math.floor(i / SIZE), c = i % SIZE;
-            const isValid = validMoves.some(([vr, vc]) => vr === r && vc === c);
-            return (
-              <button
-                key={i}
-                onClick={() => handleClick(r, c)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-sm ${isValid ? 'bg-green-600 hover:bg-green-500' : 'bg-green-700'}`}
-              >
-                {cell === 1 && <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-900" />}
-                {cell === 2 && <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white" />}
-              </button>
-            );
-          })}
+        
+        {/* Responsive Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 bg-green-800 p-2 rounded-xl overflow-hidden">
+            <div className="grid gap-[1px] h-full" style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)`, gridTemplateRows: `repeat(${SIZE}, 1fr)` }}>
+              {board.flat().map((cell, i) => {
+                const r = Math.floor(i / SIZE), c = i % SIZE;
+                const isValid = validMoves.some(([vr, vc]) => vr === r && vc === c);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleClick(r, c)}
+                    className={`flex items-center justify-center rounded-sm min-h-[48px] min-w-[48px] ${isValid ? 'bg-green-600 hover:bg-green-500 active:bg-green-500' : 'bg-green-700'}`}
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    {cell === 1 && <div className="w-3/4 h-3/4 rounded-full bg-gray-900" />}
+                    {cell === 2 && <div className="w-3/4 h-3/4 rounded-full bg-white" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
+        
         <p className="text-gray-500 text-xs">You are ⚫ · Bot is ⚪</p>
       </div>
     </GameLayout>

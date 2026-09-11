@@ -19,30 +19,33 @@ function createDeck(): Card[] {
 
 const RANK_NAMES: Record<number, string> = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 
+function initializeGame(): { stock: Card[]; tableau: Card[][] } {
+  const deck = createDeck().map(c => ({ ...c, faceUp: false }));
+  const tabs: Card[][] = [[], [], [], [], [], [], []];
+  let di = 0;
+  for (let col = 0; col < 7; col++) {
+    for (let row = 0; row <= col; row++) {
+      const card = { ...deck[di], faceUp: row === col };
+      tabs[col].push(card);
+      di++;
+    }
+  }
+  return {
+    stock: deck.slice(di).map(c => ({ ...c, faceUp: false })),
+    tableau: tabs,
+  };
+}
+
 export default function Solitaire() {
-  const [stock, setStock] = useState<Card[]>(() => createDeck().map(c => ({ ...c, faceUp: false })));
+  const initial = initializeGame();
+  const [stock, setStock] = useState<Card[]>(initial.stock);
   const [waste, setWaste] = useState<Card[]>([]);
   const [foundations, setFoundations] = useState<Card[][]>([[], [], [], []]);
-  const [tableau, setTableau] = useState<Card[][]>([[], [], [], [], [], [], []]);
+  const [tableau, setTableau] = useState<Card[][]>(initial.tableau);
   const [moves, setMoves] = useState(0);
   const [highScore, setHS] = useState(getHighScore('solitaire'));
   const [won, setWon] = useState(false);
   const [selected, setSelected] = useState<{ source: string; idx: number } | null>(null);
-
-  useEffect(() => {
-    const deck = createDeck().map(c => ({ ...c, faceUp: false }));
-    const tabs: Card[][] = [[], [], [], [], [], [], []];
-    let di = 0;
-    for (let col = 0; col < 7; col++) {
-      for (let row = 0; row <= col; row++) {
-        const card = { ...deck[di], faceUp: row === col };
-        tabs[col].push(card);
-        di++;
-      }
-    }
-    setTableau(tabs);
-    setStock(deck.slice(di).map(c => ({ ...c, faceUp: false })));
-  }, []);
 
   const drawCard = () => {
     if (stock.length === 0) {
@@ -152,21 +155,30 @@ export default function Solitaire() {
     }
   };
 
-  const reset = () => window.location.reload();
+  const reset = () => {
+    const initial = initializeGame();
+    setStock(initial.stock);
+    setWaste([]);
+    setFoundations([[], [], [], []]);
+    setTableau(initial.tableau);
+    setMoves(0);
+    setWon(false);
+    setSelected(null);
+  };
 
   const totalFound = foundations.reduce((sum, f) => sum + f.length, 0);
 
   return (
     <GameLayout title="Solitaire" score={`${totalFound}/52 · ${moves} moves`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {won && <p className="text-green-400 text-xl font-bold">🎉 You Win!</p>}
-        <div className="flex gap-2 sm:gap-3 items-center">
-          <button onClick={drawCard} className="w-12 h-16 sm:w-14 sm:h-20 rounded-lg bg-blue-800 border-2 border-blue-600 flex items-center justify-center text-xl">
+        <div className="flex gap-2 sm:gap-3 items-center flex-wrap justify-center">
+          <button onClick={drawCard} className="min-w-[48px] min-h-[48px] w-12 h-16 sm:w-14 sm:h-20 max-h-[25vh] rounded-lg bg-blue-800 hover:bg-blue-700 active:bg-blue-600 border-2 border-blue-600 flex items-center justify-center text-xl" style={{ touchAction: 'manipulation' }}>
             {stock.length > 0 ? '🂠' : '↺'}
           </button>
-          <button onClick={handleWasteClick} className={`w-12 h-16 sm:w-14 sm:h-20 rounded-lg border-2 flex items-center justify-center text-xs font-bold ${
-            selected?.source === 'waste' ? 'border-yellow-400 bg-gray-700' : 'border-gray-600 bg-gray-800'
-          }`}>
+          <button onClick={handleWasteClick} className={`min-w-[48px] min-h-[48px] w-12 h-16 sm:w-14 sm:h-20 max-h-[25vh] rounded-lg border-2 flex items-center justify-center text-xs font-bold ${
+            selected?.source === 'waste' ? 'border-yellow-400 bg-gray-700' : 'border-gray-600 bg-gray-800 hover:bg-gray-700 active:bg-gray-600'
+          }`} style={{ touchAction: 'manipulation' }}>
             {waste.length > 0 ? (
               <span className={waste[waste.length - 1].color === 'red' ? 'text-red-500' : 'text-white'}>
                 {RANK_NAMES[waste[waste.length - 1].rank] || waste[waste.length - 1].rank}{waste[waste.length - 1].suit}
@@ -178,9 +190,10 @@ export default function Solitaire() {
             <button
               key={i}
               onClick={() => handleFoundationClick(i)}
-              className={`w-12 h-16 sm:w-14 sm:h-20 rounded-lg border-2 flex items-center justify-center text-xs font-bold ${
-                f.length > 0 ? 'bg-green-900 border-green-600' : 'border-gray-600 bg-gray-800'
+              className={`min-w-[48px] min-h-[48px] w-12 h-16 sm:w-14 sm:h-20 max-h-[25vh] rounded-lg border-2 flex items-center justify-center text-xs font-bold ${
+                f.length > 0 ? 'bg-green-900 border-green-600 hover:bg-green-800 active:bg-green-700' : 'border-gray-600 bg-gray-800 hover:bg-gray-700 active:bg-gray-600'
               }`}
+              style={{ touchAction: 'manipulation' }}
             >
               {f.length > 0 ? (
                 <span className={f[f.length - 1].color === 'red' ? 'text-red-500' : 'text-white'}>
@@ -191,21 +204,22 @@ export default function Solitaire() {
           ))}
         </div>
 
-        <div className="flex gap-1 sm:gap-2">
+        <div className="flex gap-1 sm:gap-2 overflow-auto flex-1 w-full justify-center">
           {tableau.map((col, ci) => (
             <div key={ci} className="flex flex-col items-center">
               {col.length === 0 ? (
-                <button onClick={() => handleTableauClick(ci)} className="w-10 h-14 sm:w-12 sm:h-16 rounded border-2 border-dashed border-gray-600" />
+                <button onClick={() => handleTableauClick(ci)} className="min-w-[48px] min-h-[48px] w-10 h-14 sm:w-12 sm:h-16 max-h-[25vh] rounded border-2 border-dashed border-gray-600 hover:border-gray-500 active:border-gray-400" style={{ touchAction: 'manipulation' }} />
               ) : (
                 col.map((card, ri) => (
                   <button
                     key={card.id}
                     onClick={() => ri === col.length - 1 ? handleTableauClick(ci) : undefined}
-                    className={`w-10 h-14 sm:w-12 sm:h-16 rounded border text-[10px] sm:text-xs font-bold flex items-center justify-center ${
+                    className={`min-w-[48px] min-h-[48px] w-10 h-14 sm:w-12 sm:h-16 max-h-[25vh] rounded border text-[10px] sm:text-xs font-bold flex items-center justify-center ${
                       ri === col.length - 1 ? '-mt-8 sm:-mt-10' : '-mt-8 sm:-mt-10'
-                    } ${card.faceUp ? 'bg-white border-gray-300' : 'bg-blue-800 border-blue-600'} ${
+                    } ${card.faceUp ? 'bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100' : 'bg-blue-800 border-blue-600 hover:bg-blue-700 active:bg-blue-600'} ${
                       selected?.source === 'tableau' && selected.idx === ci && ri === col.length - 1 ? 'ring-2 ring-yellow-400' : ''
                     }`}
+                    style={{ touchAction: 'manipulation' }}
                   >
                     {card.faceUp ? (
                       <span className={card.color === 'red' ? 'text-red-600' : 'text-gray-900'}>

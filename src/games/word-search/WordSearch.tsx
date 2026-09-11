@@ -51,7 +51,7 @@ function generateGrid(words: string[]): { grid: string[][]; positions: Map<strin
 }
 
 export default function WordSearch() {
-  const [data] = useState(() => generateGrid(WORDS));
+  const [data, setData] = useState(() => generateGrid(WORDS));
   const [found, setFound] = useState<Set<string>>(new Set());
   const [highScore, setHS] = useState(getHighScore('word-search'));
   const [won, setWon] = useState(false);
@@ -71,27 +71,37 @@ export default function WordSearch() {
     }
   };
 
-  const reset = () => window.location.reload();
+  const reset = () => {
+    setData(generateGrid(WORDS));
+    setFound(new Set());
+    setWon(false);
+  };
 
   return (
     <GameLayout title="Word Search" score={`${found.size}/${WORDS.length}`} highScore={highScore} onReset={reset}>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {won && <p className="text-green-400 text-xl font-bold">🎉 All words found!</p>}
-        <div className="inline-grid gap-0 bg-gray-800 p-2 rounded-lg" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
-          {data.grid.flat().map((ch, i) => (
-            <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-mono font-bold text-gray-300">
-              {ch}
-            </div>
-          ))}
+        
+        {/* Responsive Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 grid gap-0 bg-gray-800 p-2 rounded-lg overflow-hidden" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)` }}>
+            {data.grid.flat().map((ch, i) => (
+              <div key={i} className="flex items-center justify-center text-xs sm:text-sm font-mono font-bold text-gray-300">
+                {ch}
+              </div>
+            ))}
+          </div>
         </div>
+        
         <div className="flex flex-wrap gap-2 justify-center">
           {WORDS.map(word => (
             <button
               key={word}
               onClick={() => findWord(word)}
-              className={`px-3 py-1 rounded-lg text-sm font-bold transition-all ${
-                found.has(word) ? 'bg-green-600 text-white line-through' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              className={`min-h-[48px] px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                found.has(word) ? 'bg-green-600 text-white line-through' : 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'
               }`}
+              style={{ touchAction: 'manipulation' }}
             >
               {word}
             </button>
