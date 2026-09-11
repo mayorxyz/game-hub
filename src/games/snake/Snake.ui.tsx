@@ -1,167 +1,268 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import GameLayout from '../../components/ui/GameLayout';
-import VirtualDPad from '../../components/ui/controls/VirtualDPad';
-import TouchControlContainer from '../../components/ui/controls/TouchControlContainer';
+import React, { useState, useEffect, useRef } from 'react';
+import { SnakeState, createInitialState, moveSnake, generateFood } from './Snake';
+import { handleDirectionInput, handleStartGame, handleResetGame } from './Snake.controls';
 import { getHighScore, setHighScore } from '../../lib/persistence';
-import { getDifficultySettings, applyDifficulty, Difficulty } from '../../lib/difficulty';
-import {
-  GameState,
-  SnakeConfig,
-  createInitialState,
-  updateGameState,
-  generateFood,
-} from './Snake';
-import { useKeyboardControls, handleTouchDirection } from './Snake.controls';
 
-// Base configuration (before difficulty adjustment)
-const BASE_GRID_SIZE = 20;
-const BASE_SPEED = 150; // milliseconds
+const FRUITS = ['🍎', '🍊', '🍒', '🍓', '🍇', '🍋', '🍑', '🍉'];
 
-export default function SnakeGame() {
-  // Difficulty state (could be lifted to global settings later)
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
-  const difficultySettings = getDifficultySettings(difficulty);
-  
-  // Apply difficulty to base config
-  const config: SnakeConfig = {
-    gridSize: applyDifficulty(BASE_GRID_SIZE, difficultySettings, 'size'),
-    speed: applyDifficulty(BASE_SPEED, difficultySettings, 'speed'),
-  };
-
-  // Game state
-  const [gameState, setGameState] = useState<GameState>(() => createInitialState(config.gridSize));
+export default function SnakeUI() {
+  const [gameState, setGameState] = useState<SnakeState>(createInitialState(20));
+  const [currentFruit, setCurrentFruit] = useState(FRUITS[0]);
   const [highScore, setHighScoreState] = useState(getHighScore('snake'));
-  
-  // Ref for direction to avoid stale closures in interval
-  const directionRef = useRef(gameState.direction);
-  directionRef.current = gameState.direction;
-
-  // Keyboard controls
-  useKeyboardControls(
-    useCallback((newDir) => {
-      setGameState(prev => ({ ...prev, direction: newDir }));
-    }, []),
-    gameState.isRunning && !gameState.isGameOver
-  );
+  const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [showCollisionFlash, setShowCollisionFlash] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Game loop
   useEffect(() => {
-    if (!gameState.isRunning || gameState.isGameOver) return;
-
-    const interval = setInterval(() => {
-      setGameState(prev => updateGameState(prev, config));
-    }, config.speed);
-
-    return () => clearInterval(interval);
-  }, [gameState.isRunning, gameState.isGameOver, config.speed]);
-
-  // High score update
-  useEffect(() => {
-    if (gameState.isGameOver && gameState.score > 0) {
-      const currentHigh = getHighScore('snake');
-      if (gameState.score > currentHigh) {
-        setHighScore('snake', gameState.score);
-        setHighScoreState(gameState.score);
+    if (gameState.isRunning && !gameState.isGameOver) {
+      intervalRef.current = setInterval(() => {
+        setGameState(prev => {
+          const newState = moveSnake(prev, 20);
+          
+          // Check if food was eaten
+          if (newState.score > prev.score) {
+            const newFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+            setCurrentFruit(newFruit);
+          }
+          
+          // Check if game over
+          if (newState.isGameOver && !prev.isGameOver) {
+            setShowCollisionFlash(true);
+            setTimeout(() => setShowCollisionFlash(false), 300);
+            
+            // Update high score
+            if (newState.score > highScore) {
+              setHighScore('snake', newState.score);
+              setHighScoreState(newState.score);
+              setIsNewHighScore(true);
+            }
+          }
+          
+          return newState;
+        });
+      }, 150);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
     }
-  }, [gameState.isGameOver, gameState.score]);
 
-  // Game controls
-  const startGame = () => {
-    setGameState(prev => ({ ...prev, isRunning: true }));
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [gameState.isRunning, gameState.isGameOver, highScore]);
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!gameState.isRunning && !gameState.isGameOver) {
+        handleStartGame(gameState, setGameState);
+        return;
+      }
+
+      if (gameState.isGameOver) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          handleReset();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          handleDirectionInput(gameState, 'UP', setGameState);
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          handleDirectionInput(gameState, 'DOWN', setGameState);
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          handleDirectionInput(gameState, 'LEFT', setGameState);
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          handleDirectionInput(gameState, 'RIGHT', setGameState);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState]);
+
+  const handleReset = () => {
+    handleResetGame(20, setGameState);
+    setCurrentFruit(FRUITS[0]);
+    setIsNewHighScore(false);
   };
 
-  const resetGame = () => {
-    setGameState(createInitialState(config.gridSize));
+  const handleStart = () => {
+    handleStartGame(gameState, setGameState);
   };
 
-  const handleTouchDirectionPress = (dir: 'up' | 'down' | 'left' | 'right') => {
-    handleTouchDirection(gameState.direction, dir, (newDir) => {
-      setGameState(prev => ({ ...prev, direction: newDir }));
-    });
+  // Calculate head rotation based on direction
+  const getHeadRotation = () => {
+    switch (gameState.direction) {
+      case 'UP':
+        return 'rotate(-90deg)';
+      case 'DOWN':
+        return 'rotate(90deg)';
+      case 'LEFT':
+        return 'rotate(180deg)';
+      case 'RIGHT':
+        return 'rotate(0deg)';
+    }
   };
 
   return (
-    <GameLayout 
-      title="Snake" 
-      score={gameState.score} 
-      highScore={highScore} 
-      onReset={resetGame}
-    >
-      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
-        {/* Difficulty selector */}
-        <div className="flex gap-2">
-          {(['easy', 'normal', 'hard'] as Difficulty[]).map((diff) => (
-            <button
-              key={diff}
-              onClick={() => {
-                setDifficulty(diff);
-                resetGame();
+    <div className="flex flex-col items-center gap-4 p-4">
+      {/* Score Display */}
+      <div className="flex gap-8 text-xl font-bold">
+        <div className="text-green-400">Score: {gameState.score}</div>
+        <div className="text-yellow-400">Best: {highScore}</div>
+      </div>
+
+      {/* Game Board */}
+      <div 
+        className={`relative bg-gray-900 border-4 border-gray-700 rounded-lg shadow-2xl ${
+          showCollisionFlash ? 'animate-pulse bg-red-900' : ''
+        }`}
+        style={{ 
+          width: '400px', 
+          height: '400px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(20, 1fr)',
+          gridTemplateRows: 'repeat(20, 1fr)',
+        }}
+      >
+        {/* Grid background */}
+        {Array.from({ length: 400 }).map((_, i) => (
+          <div 
+            key={i} 
+            className="border border-gray-800"
+            style={{ gridColumn: (i % 20) + 1, gridRow: Math.floor(i / 20) + 1 }}
+          />
+        ))}
+
+        {/* Snake body */}
+        {gameState.snake.map((segment, index) => {
+          const isHead = index === 0;
+          return (
+            <div
+              key={index}
+              className={`${isHead ? 'relative' : ''}`}
+              style={{ 
+                gridColumn: segment.x + 1, 
+                gridRow: segment.y + 1,
+                transition: 'all 0.1s ease-out',
               }}
-              className={`px-4 py-2 rounded-lg ${
-                difficulty === diff
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
             >
-              {diff.charAt(0).toUpperCase() + diff.slice(1)}
-            </button>
-          ))}
+              {isHead ? (
+                // Snake head with eyes
+                <div 
+                  className="w-full h-full bg-green-500 rounded-md relative"
+                  style={{ transform: getHeadRotation() }}
+                >
+                  {/* Eyes */}
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-white rounded-full" />
+                  <div className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-white rounded-full" />
+                  <div className="absolute top-1.5 right-1.5 w-0.5 h-0.5 bg-black rounded-full" />
+                  <div className="absolute bottom-1.5 right-1.5 w-0.5 h-0.5 bg-black rounded-full" />
+                </div>
+              ) : (
+                // Snake body segment
+                <div className="w-full h-full bg-green-600 rounded-sm mx-0.5 my-0.5" />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Food */}
+        <div
+          className="flex items-center justify-center text-2xl animate-bounce"
+          style={{ 
+            gridColumn: gameState.food.x + 1, 
+            gridRow: gameState.food.y + 1,
+            animationDuration: '1s',
+          }}
+        >
+          {currentFruit}
         </div>
 
-        {/* Start/Play Again button */}
+        {/* Game States Overlay */}
         {!gameState.isRunning && !gameState.isGameOver && (
-          <button 
-            onClick={startGame}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg"
-          >
-            Start
-          </button>
-        )}
-        {gameState.isGameOver && (
-          <button 
-            onClick={resetGame}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg"
-          >
-            Play Again
-          </button>
-        )}
-        
-        {/* Game Grid */}
-        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
-          <div className="absolute inset-0 border border-gray-700 overflow-hidden">
-            <div 
-              className="grid h-full w-full"
-              style={{ 
-                gridTemplateColumns: `repeat(${config.gridSize}, 1fr)`,
-                gridTemplateRows: `repeat(${config.gridSize}, 1fr)`
-              }}
-            >
-              {Array.from({ length: config.gridSize * config.gridSize }).map((_, idx) => {
-                const x = idx % config.gridSize;
-                const y = Math.floor(idx / config.gridSize);
-                const isSnake = gameState.snake.some(s => s.x === x && s.y === y);
-                const isFood = gameState.food.x === x && gameState.food.y === y;
-                return (
-                  <div
-                    key={idx}
-                    className={`${
-                      isSnake ? 'bg-green-500' : isFood ? 'bg-red-500' : 'bg-gray-800'
-                    }`}
-                  />
-                );
-              })}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">Ready?</div>
+              <div className="text-lg text-gray-300 mb-4">Press any arrow key to start</div>
+              <button
+                onClick={handleStart}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+              >
+                Play
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Mobile Touch Controls */}
-        <TouchControlContainer>
-          <div className="flex justify-center">
-            <VirtualDPad onDirectionPress={handleTouchDirectionPress} />
+        {gameState.isGameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-red-500 mb-2">Game Over!</div>
+              <div className="text-xl text-white mb-2">Score: {gameState.score}</div>
+              {isNewHighScore && (
+                <div className="text-lg text-yellow-400 mb-4 animate-pulse">
+                  🏆 New High Score! 🏆
+                </div>
+              )}
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+              >
+                Play Again
+              </button>
+            </div>
           </div>
-        </TouchControlContainer>
+        )}
       </div>
-    </GameLayout>
+
+      {/* Mobile Touch Controls */}
+      <div className="grid grid-cols-3 gap-2 w-48 md:hidden">
+        <div />
+        <button
+          onClick={() => handleDirectionInput(gameState, 'UP', setGameState)}
+          className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold"
+        >
+          ↑
+        </button>
+        <div />
+        <button
+          onClick={() => handleDirectionInput(gameState, 'LEFT', setGameState)}
+          className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold"
+        >
+          ←
+        </button>
+        <button
+          onClick={() => handleDirectionInput(gameState, 'DOWN', setGameState)}
+          className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold"
+        >
+          ↓
+        </button>
+        <button
+          onClick={() => handleDirectionInput(gameState, 'RIGHT', setGameState)}
+          className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold"
+        >
+          →
+        </button>
+      </div>
+    </div>
   );
 }

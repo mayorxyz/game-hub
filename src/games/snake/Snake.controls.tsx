@@ -1,68 +1,36 @@
-import { useEffect } from 'react';
-import { Direction, changeDirection } from './Snake';
+// Input handling for Snake - no React UI, just control logic
 
-// Keyboard controls hook
-export function useKeyboardControls(
-  onDirectionChange: (dir: Direction) => void,
-  isEnabled: boolean
-) {
-  useEffect(() => {
-    if (!isEnabled) return;
+import { SnakeState, Direction, changeDirection } from './Snake';
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      let newDir: Direction | null = null;
-      
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          newDir = 'UP';
-          break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          newDir = 'DOWN';
-          break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          newDir = 'LEFT';
-          break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          newDir = 'RIGHT';
-          break;
-      }
-      
-      if (newDir) {
-        e.preventDefault();
-        onDirectionChange(newDir);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onDirectionChange, isEnabled]);
+export function handleDirectionInput(
+  state: SnakeState,
+  direction: Direction,
+  onStateChange: (newState: SnakeState) => void
+): void {
+  const newState = changeDirection(state, direction);
+  onStateChange(newState);
 }
 
-// Touch controls handler
-export function handleTouchDirection(
-  currentDir: Direction,
-  newDir: 'up' | 'down' | 'left' | 'right',
-  onDirectionChange: (dir: Direction) => void
-) {
-  const directionMap = {
-    up: 'UP' as Direction,
-    down: 'DOWN' as Direction,
-    left: 'LEFT' as Direction,
-    right: 'RIGHT' as Direction,
-  };
-  
-  const newDirection = directionMap[newDir];
-  const validDirection = changeDirection(currentDir, newDirection);
-  
-  if (validDirection !== currentDir) {
-    onDirectionChange(validDirection);
+export function handleStartGame(
+  state: SnakeState,
+  onStateChange: (newState: SnakeState) => void
+): void {
+  if (!state.isRunning && !state.isGameOver) {
+    onStateChange({ ...state, isRunning: true });
   }
+}
+
+export function handleResetGame(
+  gridSize: number,
+  onStateChange: (newState: SnakeState) => void
+): void {
+  const newState = {
+    snake: [{ x: Math.floor(gridSize / 2), y: Math.floor(gridSize / 2) }],
+    food: { x: 0, y: 0 }, // Will be regenerated
+    direction: 'RIGHT' as Direction,
+    score: 0,
+    isRunning: false,
+    isGameOver: false,
+  };
+  onStateChange(newState);
 }
