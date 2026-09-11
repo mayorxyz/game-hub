@@ -29,7 +29,7 @@ export const games: GameDefinition[] = [
       tips: ['Plan your path ahead', 'Use the edges wisely', 'Don\'t trap yourself'],
     },
     accent: '#22c55e',
-    component: lazy(() => import('../games/snake/Snake')),
+    component: lazy(() => import('../games/snake')),
     supportsSave: false,
     supportsHighScore: true,
     supportsPause: true,
