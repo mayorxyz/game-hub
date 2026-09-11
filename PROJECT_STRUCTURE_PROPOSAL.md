@@ -1,608 +1,647 @@
-# Project Structure Proposal: Self-Contained Game Modules
+# Project Structure Refactoring Proposal
 
-## Step 1: Verification - GameLayout Usage
+## Overview
 
-### Grep Command Output
-```bash
-grep -L "GameLayout" src/games/*/*.tsx
-```
+**Goal:** Split each game's monolithic file into focused, maintainable modules while introducing a shared difficulty system.
 
-**Result:** No output (empty)
-
-### Analysis
-All 30 games currently import and use `GameLayout`:
-- Total game files: 30
-- Files importing GameLayout: 30
-- Files NOT importing GameLayout: 0
-
-**Conclusion:** 100% of games use GameLayout. Previous reports of 19 or 29 were incorrect.
+**Scope:** Documentation only - no code changes in this document.
 
 ---
 
-## Step 2: Proposed Structure
+## Current State (Snake Example)
 
-### Current Structure (Monolithic)
-```
-src/games/snake/
-  Snake.tsx  # Contains: game logic + UI + styling + layout wrapper
-```
+**File:** `src/games/snake/Snake.tsx` (147 lines)
 
 **Problems:**
-- All concerns mixed in one file
-- Cannot customize layout without touching game logic
-- No way to configure difficulty/parameters
-- Changes to one game risk affecting shared patterns
-- No clear separation of concerns
+- Game logic, UI rendering, and input handling all mixed together
+- Difficulty parameters (GRID size, speed) hardcoded
+- Hard to modify one aspect without touching others
+- Each game would need its own difficulty config (not scalable)
 
 ---
 
-### Proposed Structure (Modular)
+## Proposed Structure
+
+### Per-Game File Split
+
 ```
 src/games/snake/
-  Snake.tsx           # Game logic only (pure game state, no UI)
-  Snake.config.ts     # Difficulty levels, tunable parameters
-  Snake.styles.ts     # Scoped styling (Tailwind classes, custom CSS)
-  Snake.layout.tsx    # Optional custom layout (falls back to default)
-  Snake.controls.tsx  # Optional custom controls (keyboard/touch mapping)
-  Snake.ui.tsx        # Game-specific UI components (HUD, menus)
-  index.ts            # Public API export
+├── Snake.ts           # Pure game logic (no React)
+├── Snake.ui.tsx       # React UI components
+├── Snake.controls.tsx # Input handling (keyboard + touch)
+└── index.ts          # Public exports
+```
+
+### Shared Difficulty System
+
+**New file:** `src/lib/difficulty.ts`
+
+```typescript
+// Difficulty levels available to all games
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
+// Generic difficulty settings that games can interpret
+export interface DifficultySettings {
+  // Time-based games: multiplier for time limits
+  timeMultiplier: number;
+  
+  // Speed-based games: multiplier for game speed (lower = slower)
+  speedMultiplier: number;
+  
+  // Size-based games: multiplier for grid/board size
+  sizeMultiplier: number;
+  
+  // Complexity-based games: multiplier for complexity (e.g., more mines, more words)
+  complexityMultiplier: number;
+  
+  // Score multiplier for balancing difficulty vs reward
+  scoreMultiplier: number;
+}
+
+// Preset difficulty configurations
+export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultySettings> = {
+  easy: {
+    timeMultiplier: 1.5,      // 50% more time
+    speedMultiplier: 0.7,     // 30% slower
+    sizeMultiplier: 0.8,      // 20% smaller
+    complexityMultiplier: 0.7, // 30% less complex
+    scoreMultiplier: 0.8,     // 20% less score
+  },
+  normal: {
+    timeMultiplier: 1.0,
+    speedMultiplier: 1.0,
+    sizeMultiplier: 1.0,
+    complexityMultiplier: 1.0,
+    scoreMultiplier: 1.0,
+  },
+  hard: {
+    timeMultiplier: 0.7,      // 30% less time
+    speedMultiplier: 1.5,     // 50% faster
+    sizeMultiplier: 1.3,      // 30% larger
+    complexityMultiplier: 1.5, // 50% more complex
+    scoreMultiplier: 1.5,     // 50% more score
+  },
+};
+
+// Helper to get difficulty settings
+export function getDifficultySettings(difficulty: Difficulty): DifficultySettings {
+  return DIFFICULTY_PRESETS[difficulty];
+}
+
+// Helper to apply difficulty to a base value
+export function applyDifficulty(
+  baseValue: number,
+  settings: DifficultySettings,
+  type: 'time' | 'speed' | 'size' | 'complexity' | 'score'
+): number {
+  const multiplier = settings[`${type}Multiplier`];
+  return Math.round(baseValue * multiplier);
+}
 ```
 
 ---
 
-## Step 3: File Responsibilities
+## Before/After: Snake Game
 
-### 1. `Snake.tsx` - Core Game Logic
-**Purpose:** Pure game logic, state management, rules
-**Contains:**
-- Game state types
-- State transitions
-- Win/lose conditions
-- Score calculation
-- Game loop (if applicable)
+### BEFORE (Current)
 
-**Does NOT contain:**
-- React components
-- Styling
-- Layout
-- Difficulty config
+**Single file:** `src/games/snake/Snake.tsx` (147 lines)
 
-**Example:**
+Everything mixed together:
+- Types (lines 9-10)
+- Game logic (lines 12-18, 43-71)
+- React component (lines 20-146)
+- State management (lines 21-29)
+- Keyboard controls (lines 31-41)
+- Touch controls (lines 93-99)
+- UI rendering (lines 101-145)
+- Hardcoded GRID = 20 (line 7)
+- Hardcoded speed = 150ms (line 69)
+
+---
+
+### AFTER (Proposed)
+
+#### 1. `src/games/snake/Snake.ts` - Pure Game Logic
+
 ```typescript
-// Snake.tsx
-export type GameState = {
+// Pure game logic - no React, no UI, no input handling
+
+export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+export type Position = { x: number; y: number };
+
+export interface GameState {
   snake: Position[];
   food: Position;
   direction: Direction;
   score: number;
-  status: 'playing' | 'gameover' | 'won';
-};
+  isRunning: boolean;
+  isGameOver: boolean;
+}
 
-export function createInitialState(config: SnakeConfig): GameState {
+export interface SnakeConfig {
+  gridSize: number;
+  speed: number; // milliseconds per tick
+}
+
+// Generate food at random position not occupied by snake
+export function generateFood(snake: Position[], gridSize: number): Position {
+  let pos: Position;
+  do {
+    pos = { 
+      x: Math.floor(Math.random() * gridSize), 
+      y: Math.floor(Math.random() * gridSize) 
+    };
+  } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  return pos;
+}
+
+// Create initial game state
+export function createInitialState(gridSize: number): GameState {
+  const initialSnake = [{ x: Math.floor(gridSize / 2), y: Math.floor(gridSize / 2) }];
   return {
-    snake: [{ x: 10, y: 10 }],
-    food: generateFood(config.gridSize),
+    snake: initialSnake,
+    food: generateFood(initialSnake, gridSize),
     direction: 'RIGHT',
     score: 0,
-    status: 'playing',
+    isRunning: false,
+    isGameOver: false,
   };
 }
 
-export function updateState(state: GameState, action: GameAction, config: SnakeConfig): GameState {
-  // Pure game logic
+// Check if position is valid (within bounds and not colliding with snake)
+export function isValidPosition(pos: Position, snake: Position[], gridSize: number): boolean {
+  if (pos.x < 0 || pos.x >= gridSize || pos.y < 0 || pos.y >= gridSize) {
+    return false;
+  }
+  if (snake.some(s => s.x === pos.x && s.y === pos.y)) {
+    return false;
+  }
+  return true;
 }
 
-export function checkWinCondition(state: GameState, config: SnakeConfig): boolean {
-  // Win logic
+// Update game state for one tick
+export function updateGameState(state: GameState, config: SnakeConfig): GameState {
+  if (!state.isRunning || state.isGameOver) {
+    return state;
+  }
+
+  const head = { ...state.snake[0] };
+  
+  // Move head based on direction
+  switch (state.direction) {
+    case 'UP': head.y--; break;
+    case 'DOWN': head.y++; break;
+    case 'LEFT': head.x--; break;
+    case 'RIGHT': head.x++; break;
+  }
+
+  // Check collision
+  if (!isValidPosition(head, state.snake, config.gridSize)) {
+    return { ...state, isGameOver: true, isRunning: false };
+  }
+
+  const newSnake = [head, ...state.snake];
+  
+  // Check if food eaten
+  if (head.x === state.food.x && head.y === state.food.y) {
+    return {
+      ...state,
+      snake: newSnake,
+      food: generateFood(newSnake, config.gridSize),
+      score: state.score + 10,
+    };
+  } else {
+    // Remove tail
+    newSnake.pop();
+    return {
+      ...state,
+      snake: newSnake,
+    };
+  }
 }
-```
 
----
-
-### 2. `Snake.config.ts` - Configuration & Difficulty
-**Purpose:** Difficulty levels, tunable parameters, game constants
-**Contains:**
-- Difficulty presets (easy/medium/hard)
-- Game parameters (speed, grid size, etc.)
-- Default values
-
-**Example:**
-```typescript
-// Snake.config.ts
-export type Difficulty = 'easy' | 'medium' | 'hard';
-
-export type SnakeConfig = {
-  difficulty: Difficulty;
-  gridSize: number;
-  initialSpeed: number;
-  speedIncrement: number;
-  maxSpeed: number;
-  wrapAround: boolean;
-};
-
-export const DIFFICULTY_PRESETS: Record<Difficulty, SnakeConfig> = {
-  easy: {
-    difficulty: 'easy',
-    gridSize: 15,
-    initialSpeed: 200,
-    speedIncrement: 5,
-    maxSpeed: 100,
-    wrapAround: true,
-  },
-  medium: {
-    difficulty: 'medium',
-    gridSize: 20,
-    initialSpeed: 150,
-    speedIncrement: 10,
-    maxSpeed: 80,
-    wrapAround: false,
-  },
-  hard: {
-    difficulty: 'hard',
-    gridSize: 25,
-    initialSpeed: 100,
-    speedIncrement: 15,
-    maxSpeed: 50,
-    wrapAround: false,
-  },
-};
-
-export function getConfig(difficulty: Difficulty): SnakeConfig {
-  return DIFFICULTY_PRESETS[difficulty];
-}
-```
-
-**Usage:**
-```typescript
-// In Snake.ui.tsx or Snake.tsx
-import { getConfig } from './Snake.config';
-
-const config = getConfig('medium'); // or from user settings
-const initialState = createInitialState(config);
-```
-
----
-
-### 3. `Snake.styles.ts` - Scoped Styling
-**Purpose:** Game-specific styling, Tailwind classes, custom CSS
-**Contains:**
-- Tailwind class strings
-- Custom CSS-in-JS (if needed)
-- Theme overrides
-
-**Example:**
-```typescript
-// Snake.styles.ts
-export const styles = {
-  container: 'w-full h-full flex flex-col items-center justify-center bg-gray-900',
-  grid: 'relative border-2 border-gray-700',
-  snake: 'bg-green-500 rounded-sm',
-  food: 'bg-red-500 rounded-full',
-  score: 'text-2xl font-bold text-white',
-  gameOver: 'text-red-500 text-3xl font-bold',
-};
-
-export function getGridStyle(gridSize: number): React.CSSProperties {
-  return {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-    aspectRatio: '1',
+// Change direction (prevents 180-degree turns)
+export function changeDirection(current: Direction, newDir: Direction): Direction {
+  const opposites: Record<Direction, Direction> = {
+    UP: 'DOWN',
+    DOWN: 'UP',
+    LEFT: 'RIGHT',
+    RIGHT: 'LEFT',
   };
+  
+  if (opposites[current] === newDir) {
+    return current; // Ignore opposite direction
+  }
+  
+  return newDir;
 }
 ```
+
+**Responsibilities:**
+- Type definitions
+- Pure functions for game logic
+- No React, no side effects
+- Easy to test in isolation
 
 ---
 
-### 4. `Snake.layout.tsx` - Custom Layout (Optional)
-**Purpose:** Override default GameLayout with game-specific layout
-**Falls back to:** `src/components/ui/GameLayout.tsx` if not provided
+#### 2. `src/games/snake/Snake.controls.tsx` - Input Handling
 
-**Example:**
 ```typescript
-// Snake.layout.tsx
-import React from 'react';
-import { styles } from './Snake.styles';
-
-interface SnakeLayoutProps {
-  children: React.ReactNode;
-  score: number;
-  highScore: number;
-  onReset: () => void;
-}
-
-export function SnakeLayout({ children, score, highScore, onReset }: SnakeLayoutProps) {
-  return (
-    <div className={styles.container}>
-      {/* Custom HUD */}
-      <div className="flex gap-4 mb-4">
-        <div className={styles.score}>Score: {score}</div>
-        <div className="text-gray-400">Best: {highScore}</div>
-      </div>
-      
-      {/* Game content */}
-      {children}
-      
-      {/* Custom controls */}
-      <button onClick={onReset} className="mt-4 px-4 py-2 bg-indigo-600 rounded">
-        Reset
-      </button>
-    </div>
-  );
-}
-```
-
-**Fallback Behavior:**
-```typescript
-// In GameSession.tsx or game wrapper
-import { SnakeLayout } from './Snake.layout'; // Optional import
-import DefaultGameLayout from '../../components/ui/GameLayout';
-
-const Layout = SnakeLayout || DefaultGameLayout;
-```
-
----
-
-### 5. `Snake.controls.tsx` - Custom Controls (Optional)
-**Purpose:** Game-specific input handling (keyboard, touch, gamepad)
-**Contains:**
-- Keyboard mappings
-- Touch gestures
-- Control schemes
-
-**Example:**
-```typescript
-// Snake.controls.tsx
 import { useEffect } from 'react';
+import { Direction, changeDirection } from './Snake';
 
-export function useSnakeControls(
+// Keyboard controls hook
+export function useKeyboardControls(
   onDirectionChange: (dir: Direction) => void,
-  enabled: boolean
+  isEnabled: boolean
 ) {
   useEffect(() => {
-    if (!enabled) return;
+    if (!isEnabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      let newDir: Direction | null = null;
+      
       switch (e.key) {
         case 'ArrowUp':
         case 'w':
-          onDirectionChange('UP');
+        case 'W':
+          newDir = 'UP';
           break;
         case 'ArrowDown':
         case 's':
-          onDirectionChange('DOWN');
+        case 'S':
+          newDir = 'DOWN';
           break;
-        // ...
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          newDir = 'LEFT';
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          newDir = 'RIGHT';
+          break;
+      }
+      
+      if (newDir) {
+        e.preventDefault();
+        onDirectionChange(newDir);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onDirectionChange, enabled]);
+  }, [onDirectionChange, isEnabled]);
 }
 
-export function useSnakeTouchControls(
-  onDirectionChange: (dir: Direction) => void,
-  enabled: boolean
+// Touch controls handler
+export function handleTouchDirection(
+  currentDir: Direction,
+  newDir: 'up' | 'down' | 'left' | 'right',
+  onDirectionChange: (dir: Direction) => void
 ) {
-  // Touch/swipe handling
+  const directionMap = {
+    up: 'UP' as Direction,
+    down: 'DOWN' as Direction,
+    left: 'LEFT' as Direction,
+    right: 'RIGHT' as Direction,
+  };
+  
+  const newDirection = directionMap[newDir];
+  const validDirection = changeDirection(currentDir, newDirection);
+  
+  if (validDirection !== currentDir) {
+    onDirectionChange(validDirection);
+  }
 }
 ```
 
+**Responsibilities:**
+- Keyboard event listeners
+- Touch control handlers
+- Direction validation
+- No game logic, no UI rendering
+
 ---
 
-### 6. `Snake.ui.tsx` - Game UI Components
-**Purpose:** React components for rendering the game
-**Contains:**
-- Game board/grid
-- Score display
-- Game over screen
-- Difficulty selector
+#### 3. `src/games/snake/Snake.ui.tsx` - React UI Components
 
-**Example:**
 ```typescript
-// Snake.ui.tsx
-import React, { useState, useEffect } from 'react';
-import { GameState, createInitialState, updateState } from './Snake';
-import { getConfig, Difficulty } from './Snake.config';
-import { styles, getGridStyle } from './Snake.styles';
-import { useSnakeControls } from './Snake.controls';
-import { SnakeLayout } from './Snake.layout';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import GameLayout from '../../components/ui/GameLayout';
+import VirtualDPad from '../../components/ui/controls/VirtualDPad';
+import TouchControlContainer from '../../components/ui/controls/TouchControlContainer';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { getDifficultySettings, applyDifficulty, Difficulty } from '../../lib/difficulty';
+import {
+  GameState,
+  SnakeConfig,
+  createInitialState,
+  updateGameState,
+  generateFood,
+} from './Snake';
+import { useKeyboardControls, handleTouchDirection } from './Snake.controls';
+
+// Base configuration (before difficulty adjustment)
+const BASE_GRID_SIZE = 20;
+const BASE_SPEED = 150; // milliseconds
 
 export default function SnakeGame() {
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const config = getConfig(difficulty);
-  const [state, setState] = useState<GameState>(() => createInitialState(config));
+  // Difficulty state (could be lifted to global settings later)
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const difficultySettings = getDifficultySettings(difficulty);
+  
+  // Apply difficulty to base config
+  const config: SnakeConfig = {
+    gridSize: applyDifficulty(BASE_GRID_SIZE, difficultySettings, 'size'),
+    speed: applyDifficulty(BASE_SPEED, difficultySettings, 'speed'),
+  };
+
+  // Game state
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(config.gridSize));
   const [highScore, setHighScoreState] = useState(getHighScore('snake'));
+  
+  // Ref for direction to avoid stale closures in interval
+  const directionRef = useRef(gameState.direction);
+  directionRef.current = gameState.direction;
+
+  // Keyboard controls
+  useKeyboardControls(
+    useCallback((newDir) => {
+      setGameState(prev => ({ ...prev, direction: newDir }));
+    }, []),
+    gameState.isRunning && !gameState.isGameOver
+  );
 
   // Game loop
   useEffect(() => {
-    if (state.status !== 'playing') return;
-    
+    if (!gameState.isRunning || gameOver) return;
+
     const interval = setInterval(() => {
-      setState(prev => updateState(prev, { type: 'TICK' }, config));
-    }, config.initialSpeed);
+      setGameState(prev => updateGameState(prev, config));
+    }, config.speed);
 
     return () => clearInterval(interval);
-  }, [state.status, config]);
+  }, [gameState.isRunning, gameState.isGameOver, config.speed]);
 
-  // Controls
-  useSnakeControls((dir) => {
-    setState(prev => updateState(prev, { type: 'CHANGE_DIRECTION', direction: dir }, config));
-  }, state.status === 'playing');
-
-  // High score
+  // High score update
   useEffect(() => {
-    if (state.status === 'gameover' && state.score > highScore) {
-      setHighScore('snake', state.score);
-      setHighScoreState(state.score);
+    if (gameState.isGameOver && gameState.score > 0) {
+      const currentHigh = getHighScore('snake');
+      if (gameState.score > currentHigh) {
+        setHighScore('snake', gameState.score);
+        setHighScoreState(gameState.score);
+      }
     }
-  }, [state.status, state.score, highScore]);
+  }, [gameState.isGameOver, gameState.score]);
 
-  const handleReset = () => {
-    setState(createInitialState(config));
+  // Game controls
+  const startGame = () => {
+    setGameState(prev => ({ ...prev, isRunning: true }));
+  };
+
+  const resetGame = () => {
+    setGameState(createInitialState(config.gridSize));
+  };
+
+  const handleTouchDirectionPress = (dir: 'up' | 'down' | 'left' | 'right') => {
+    handleTouchDirection(gameState.direction, dir, (newDir) => {
+      setGameState(prev => ({ ...prev, direction: newDir }));
+    });
   };
 
   return (
-    <SnakeLayout score={state.score} highScore={highScore} onReset={handleReset}>
-      {/* Difficulty selector */}
-      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
-      </select>
+    <GameLayout 
+      title="Snake" 
+      score={gameState.score} 
+      highScore={highScore} 
+      onReset={resetGame}
+    >
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+        {/* Difficulty selector */}
+        <div className="flex gap-2">
+          {(['easy', 'normal', 'hard'] as Difficulty[]).map((diff) => (
+            <button
+              key={diff}
+              onClick={() => {
+                setDifficulty(diff);
+                resetGame();
+              }}
+              className={`px-4 py-2 rounded-lg ${
+                difficulty === diff
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {diff.charAt(0).toUpperCase() + diff.slice(1)}
+            </button>
+          ))}
+        </div>
 
-      {/* Game grid */}
-      <div style={getGridStyle(config.gridSize)} className={styles.grid}>
-        {state.snake.map((pos, i) => (
-          <div key={i} className={styles.snake} style={{ gridColumn: pos.x + 1, gridRow: pos.y + 1 }} />
-        ))}
-        <div className={styles.food} style={{ gridColumn: state.food.x + 1, gridRow: state.food.y + 1 }} />
+        {/* Start/Play Again button */}
+        {!gameState.isRunning && !gameState.isGameOver && (
+          <button 
+            onClick={startGame}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg"
+          >
+            Start
+          </button>
+        )}
+        {gameState.isGameOver && (
+          <button 
+            onClick={resetGame}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg"
+          >
+            Play Again
+          </button>
+        )}
+        
+        {/* Game Grid */}
+        <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
+          <div className="absolute inset-0 border border-gray-700 overflow-hidden">
+            <div 
+              className="grid h-full w-full"
+              style={{ 
+                gridTemplateColumns: `repeat(${config.gridSize}, 1fr)`,
+                gridTemplateRows: `repeat(${config.gridSize}, 1fr)`
+              }}
+            >
+              {Array.from({ length: config.gridSize * config.gridSize }).map((_, idx) => {
+                const x = idx % config.gridSize;
+                const y = Math.floor(idx / config.gridSize);
+                const isSnake = gameState.snake.some(s => s.x === x && s.y === y);
+                const isFood = gameState.food.x === x && gameState.food.y === y;
+                return (
+                  <div
+                    key={idx}
+                    className={`${
+                      isSnake ? 'bg-green-500' : isFood ? 'bg-red-500' : 'bg-gray-800'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Touch Controls */}
+        <TouchControlContainer>
+          <div className="flex justify-center">
+            <VirtualDPad onDirectionPress={handleTouchDirectionPress} />
+          </div>
+        </TouchControlContainer>
       </div>
-
-      {/* Game over */}
-      {state.status === 'gameover' && (
-        <div className={styles.gameOver}>Game Over!</div>
-      )}
-    </SnakeLayout>
+    </GameLayout>
   );
 }
 ```
 
+**Responsibilities:**
+- React component and state management
+- UI rendering
+- Integration with GameLayout
+- Difficulty selection UI
+- Game loop orchestration
+- High score persistence
+
 ---
 
-### 7. `index.ts` - Public API
-**Purpose:** Clean exports for the game module
-**Contains:**
-- Default export (main game component)
-- Named exports (types, configs, utilities)
+#### 4. `src/games/snake/index.ts` - Public Exports
 
-**Example:**
 ```typescript
-// index.ts
 export { default } from './Snake.ui';
-export type { GameState, SnakeConfig, Difficulty } from './Snake';
-export { DIFFICULTY_PRESETS, getConfig } from './Snake.config';
+export * from './Snake';
 ```
 
 ---
 
-## Step 4: What Stays Shared (Untouched)
+## What Stays Shared (Untouched)
 
-### Shared Systems (Do NOT Modify)
-1. **`src/lib/persistence.ts`** - Centralized localStorage
-   - Why: Single source of truth, prevents conflicts
-   - All games use this for high scores, play counts
+These files remain unchanged:
 
+1. **`src/lib/persistence.ts`** - High score storage
 2. **`src/data/games.ts`** - Game registry
-   - Why: Central routing, discovery, metadata
-   - Contains lazy imports, categories, descriptions
-
 3. **`src/App.tsx`** - Routing
-   - Why: Centralized route definitions
-   - Maps `/play/:slug` to GameSession
-
-4. **`src/index.css`** - Global styles
-   - Why: Consistent theme, focus states, reduced motion
-   - Base styles that all games inherit
-
-5. **`src/components/ui/GameLayout.tsx`** - Default layout
-   - Why: Fallback for games without custom layout
-   - Provides standard HUD (score, high score, reset)
-
-6. **`src/features/game-session/GameSession.tsx`** - Game shell
-   - Why: Viewport fitting, error boundary, suspense
-   - Wraps all games consistently
+4. **`src/components/ui/GameLayout.tsx`** - Game layout wrapper
+5. **`src/lib/difficulty.ts`** - NEW shared difficulty system
 
 ---
 
-## Step 5: Before/After Example (Snake)
+## Benefits of This Structure
 
-### Before (Current)
+### 1. Separation of Concerns
+- **Snake.ts**: Pure logic, easy to test, no React dependency
+- **Snake.controls.tsx**: Input handling isolated
+- **Snake.ui.tsx**: UI rendering isolated
+- **index.ts**: Clean public API
+
+### 2. Shared Difficulty System
+- One source of truth for difficulty levels
+- Consistent difficulty across all games
+- Easy to add new difficulty levels
+- Games interpret difficulty settings according to their mechanics
+
+### 3. Maintainability
+- Change game speed? Edit `Snake.ts` or adjust `BASE_SPEED`
+- Change controls? Edit `Snake.controls.tsx`
+- Change UI? Edit `Snake.ui.tsx`
+- Change difficulty? Edit `src/lib/difficulty.ts`
+
+### 4. Testability
+- Pure game logic in `Snake.ts` can be unit tested without React
+- Controls can be tested independently
+- UI can be tested with mocked game state
+
+### 5. Reusability
+- Game logic could be reused for different UIs (e.g., 3D Snake)
+- Controls could be reused for other grid-based games
+- Difficulty system works for all games
+
+---
+
+## Migration Strategy
+
+### Phase 1: Create New Files
+1. Create `Snake.ts` with extracted game logic
+2. Create `Snake.controls.tsx` with extracted input handling
+3. Create `Snake.ui.tsx` with React component
+4. Create `index.ts` with exports
+
+### Phase 2: Update Imports
+1. Update `src/data/games.ts` to import from `src/games/snake/index.ts`
+2. Verify routing still works
+
+### Phase 3: Remove Old File
+1. Delete old `Snake.tsx`
+2. Run tests to verify everything works
+
+### Phase 4: Apply to Other Games
+1. Repeat process for each game
+2. Each game can be migrated independently
+
+---
+
+## Example: How Difficulty Works
+
+### Snake Game
+```typescript
+const BASE_GRID_SIZE = 20;
+const BASE_SPEED = 150;
+
+const settings = getDifficultySettings('hard');
+const gridSize = applyDifficulty(BASE_GRID_SIZE, settings, 'size'); // 26
+const speed = applyDifficulty(BASE_SPEED, settings, 'speed'); // 100ms (faster)
 ```
-src/games/snake/
-  Snake.tsx  # 147 lines - everything mixed together
+
+### Minesweeper Game (Future Example)
+```typescript
+const BASE_ROWS = 9;
+const BASE_COLS = 9;
+const BASE_MINES = 10;
+
+const settings = getDifficultySettings('hard');
+const rows = applyDifficulty(BASE_ROWS, settings, 'size'); // 12
+const cols = applyDifficulty(BASE_COLS, settings, 'size'); // 12
+const mines = applyDifficulty(BASE_MINES, settings, 'complexity'); // 15
 ```
 
-**Snake.tsx contains:**
-- Game state types (lines 9-10)
-- Game logic (lines 12-18, 43-80)
-- React component (lines 20-146)
-- Styling (inline Tailwind classes)
-- Layout (GameLayout wrapper)
-- Controls (keyboard + touch)
-- Difficulty (hardcoded grid size)
+### Breakout Game (Future Example)
+```typescript
+const BASE_BALL_SPEED = 5;
+const BASE_PADDLE_WIDTH = 80;
 
-**Problems:**
-- Cannot change difficulty without editing game logic
-- Cannot customize layout without touching UI
-- Cannot reuse game logic in different context
-- All changes require editing same file
-
----
-
-### After (Proposed)
-```
-src/games/snake/
-  Snake.tsx           # 80 lines - pure game logic
-  Snake.config.ts     # 50 lines - difficulty & parameters
-  Snake.styles.ts     # 30 lines - scoped styling
-  Snake.layout.tsx    # 40 lines - custom layout (optional)
-  Snake.controls.tsx  # 60 lines - input handling
-  Snake.ui.tsx        # 100 lines - React UI components
-  index.ts            # 5 lines - exports
+const settings = getDifficultySettings('hard');
+const ballSpeed = applyDifficulty(BASE_BALL_SPEED, settings, 'speed'); // 7.5
+const paddleWidth = applyDifficulty(BASE_PADDLE_WIDTH, settings, 'size'); // 64 (smaller)
 ```
 
-**Benefits:**
-- ✅ Edit difficulty without touching game logic
-- ✅ Customize layout without touching UI
-- ✅ Reuse game logic in different contexts
-- ✅ Clear separation of concerns
-- ✅ Easy to test each piece independently
-- ✅ Can override any piece without affecting others
+---
+
+## Summary
+
+**Files Changed:**
+- Split `src/games/snake/Snake.tsx` → 4 files
+- Add `src/lib/difficulty.ts` (shared)
+
+**Files Unchanged:**
+- All shared infrastructure (persistence, routing, registry, GameLayout)
+
+**Result:**
+- Cleaner, more maintainable code
+- Consistent difficulty across games
+- Easy to modify individual aspects
+- Better testability
+- No breaking changes to existing functionality
 
 ---
 
-## Step 6: Migration Strategy
+## Next Steps
 
-### Phase 1: Extract Config (Low Risk)
-1. Create `Snake.config.ts` with difficulty presets
-2. Update `Snake.tsx` to import config
-3. No UI changes, just parameterize existing values
-
-### Phase 2: Extract Styles (Low Risk)
-1. Create `Snake.styles.ts` with Tailwind classes
-2. Update `Snake.tsx` to import styles
-3. No logic changes, just styling
-
-### Phase 3: Extract Controls (Medium Risk)
-1. Create `Snake.controls.tsx` with input hooks
-2. Update `Snake.tsx` to use control hooks
-3. Test keyboard and touch input
-
-### Phase 4: Extract Layout (Medium Risk)
-1. Create `Snake.layout.tsx` with custom layout
-2. Update `GameSession.tsx` to detect custom layouts
-3. Test layout fallback behavior
-
-### Phase 5: Extract UI (High Risk)
-1. Create `Snake.ui.tsx` with React components
-2. Rename `Snake.tsx` to pure logic file
-3. Update imports in registry
-4. Full regression testing
-
----
-
-## Step 7: Implementation Checklist
-
-### For Each Game:
-- [ ] Create `GameName.config.ts` with difficulty presets
-- [ ] Create `GameName.styles.ts` with scoped styling
-- [ ] Create `GameName.controls.tsx` with input handling
-- [ ] Create `GameName.layout.tsx` (optional, if custom layout needed)
-- [ ] Create `GameName.ui.tsx` with React components
-- [ ] Refactor `GameName.tsx` to pure game logic
-- [ ] Create `index.ts` with clean exports
-- [ ] Update game registry if needed
-- [ ] Test all difficulty levels
-- [ ] Test custom layout (if provided)
-- [ ] Test fallback to default layout
-- [ ] Verify high score persistence
-- [ ] Verify keyboard controls
-- [ ] Verify touch controls
-- [ ] Test on mobile viewport
-- [ ] Test on desktop viewport
-
----
-
-## Step 8: Risk Assessment
-
-### Low Risk
-- Extracting config (no UI changes)
-- Extracting styles (no logic changes)
-- Adding new files (no breaking changes)
-
-### Medium Risk
-- Extracting controls (input handling changes)
-- Custom layouts (GameSession detection logic)
-
-### High Risk
-- Splitting UI from logic (major refactor)
-- Changing game registry (affects routing)
-
-### Mitigation
-- Keep `GameName.tsx` as fallback during migration
-- Test each phase independently
-- Maintain backward compatibility
-- Gradual rollout (one game at a time)
-
----
-
-## Step 9: Success Criteria
-
-### Functional Requirements
-- ✅ Each game can be edited independently
-- ✅ Difficulty can be changed without code changes
-- ✅ Custom layouts work when provided
-- ✅ Default layout works when custom not provided
-- ✅ All 30 games continue working
-- ✅ High scores persist correctly
-- ✅ Controls work on desktop and mobile
-
-### Non-Functional Requirements
-- ✅ No performance regression
-- ✅ No bundle size increase (>5%)
-- ✅ No breaking changes to existing games
-- ✅ Clear documentation for each file
-- ✅ Easy to add new games
-
----
-
-## Step 10: Open Questions
-
-1. **Should all games have custom layouts?**
-   - Recommendation: No, only games that need unique HUD/controls
-   - Most games can use default GameLayout
-
-2. **Should difficulty be user-selectable or hardcoded?**
-   - Recommendation: User-selectable via in-game menu
-   - Store preference in localStorage
-
-3. **Should controls be customizable?**
-   - Recommendation: Yes, allow key rebinding
-   - Store bindings in localStorage
-
-4. **Should games share any UI components?**
-   - Recommendation: Yes, shared components in `src/components/ui/`
-   - Game-specific components stay in game folder
-
-5. **How to handle games with unique mechanics?**
-   - Recommendation: Allow game-specific files (e.g., `Snake.powerups.ts`)
-   - Keep core structure consistent
-
----
-
-## Conclusion
-
-This proposal transforms the project from a monolithic structure where each game is a single large file, to a modular structure where each game is a self-contained module with clear separation of concerns.
-
-**Key Benefits:**
-- Independent editing of each game
-- Configurable difficulty without code changes
-- Optional custom layouts with fallback
-- Clear separation of logic, UI, styling, controls
-- Easy to test and maintain
-
-**Key Risks:**
-- Migration effort (30 games)
-- Potential breaking changes
-- Increased file count
-
-**Recommendation:**
-Start with one game (Snake) as a proof of concept, validate the structure, then roll out to other games gradually.
-
----
-
-**Document Version:** 1.0  
-**Date:** 2024  
-**Status:** Proposal (Not Implemented)
+1. Review and approve this proposal
+2. Implement for Snake game as proof of concept
+3. Test thoroughly
+4. Apply pattern to remaining 29 games
+5. Add difficulty selector UI to other games
