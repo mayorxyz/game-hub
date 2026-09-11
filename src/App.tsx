@@ -1,5 +1,5 @@
+import Snake from './games/snake';
+
 export default function App() {
-  return (
-    <div/>
-  );
+  return <Snake />;
 }
