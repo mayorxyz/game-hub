@@ -2,11 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SnakeState, createInitialState, moveSnake, generateFood } from './Snake';
 import { handleDirectionInput, handleStartGame, handleResetGame } from './Snake.controls';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+import DifficultySelector from '../../components/ui/DifficultySelector';
 
 const FRUITS = ['🍎', '🍊', '🍒', '🍓', '🍇', '🍋', '🍑', '🍉'];
+const BASE_GRID_SIZE = 20;
+const BASE_SPEED = 150;
 
 export default function SnakeUI() {
-  const [gameState, setGameState] = useState<SnakeState>(createInitialState(20));
+  const { difficulty, setDifficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  
+  const gridSize = applyDifficulty(BASE_GRID_SIZE, difficultySettings, 'size');
+  const speed = applyDifficulty(BASE_SPEED, difficultySettings, 'speed');
+  const scoreMultiplier = difficultySettings.scoreMultiplier;
+  
+  const [gameState, setGameState] = useState<SnakeState>(createInitialState(gridSize, scoreMultiplier));
   const [currentFruit, setCurrentFruit] = useState(FRUITS[0]);
   const [highScore, setHighScoreState] = useState(getHighScore('snake'));
   const [isNewHighScore, setIsNewHighScore] = useState(false);
@@ -18,7 +30,7 @@ export default function SnakeUI() {
     if (gameState.isRunning && !gameState.isGameOver) {
       intervalRef.current = setInterval(() => {
         setGameState(prev => {
-          const newState = moveSnake(prev, 20);
+          const newState = moveSnake(prev, gridSize);
           
           // Check if food was eaten
           if (newState.score > prev.score) {
@@ -41,7 +53,7 @@ export default function SnakeUI() {
           
           return newState;
         });
-      }, 150);
+      }, speed);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -53,7 +65,7 @@ export default function SnakeUI() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [gameState.isRunning, gameState.isGameOver, highScore]);
+  }, [gameState.isRunning, gameState.isGameOver, highScore, gridSize, speed]);
 
   // Keyboard controls
   useEffect(() => {
@@ -99,7 +111,7 @@ export default function SnakeUI() {
   }, [gameState]);
 
   const handleReset = () => {
-    handleResetGame(20, setGameState);
+    handleResetGame(gridSize, scoreMultiplier, setGameState);
     setCurrentFruit(FRUITS[0]);
     setIsNewHighScore(false);
   };
@@ -122,8 +134,26 @@ export default function SnakeUI() {
     }
   };
 
+  const handleDifficultyChange = (newDifficulty: 'easy' | 'medium' | 'hard') => {
+    setDifficulty(newDifficulty);
+    // Reset game when difficulty changes
+    const newSettings = getDifficultySettings(newDifficulty);
+    const newGridSize = applyDifficulty(BASE_GRID_SIZE, newSettings, 'size');
+    const newScoreMultiplier = newSettings.scoreMultiplier;
+    handleResetGame(newGridSize, newScoreMultiplier, setGameState);
+    setCurrentFruit(FRUITS[0]);
+    setIsNewHighScore(false);
+  };
+
   return (
     <div className="flex flex-col items-center gap-4 p-4">
+      {/* Difficulty Selector */}
+      <DifficultySelector 
+        value={difficulty} 
+        onChange={handleDifficultyChange}
+        disabled={gameState.isRunning}
+      />
+
       {/* Score Display */}
       <div className="flex gap-8 text-xl font-bold">
         <div className="text-green-400">Score: {gameState.score}</div>
@@ -139,16 +169,16 @@ export default function SnakeUI() {
           width: '400px', 
           height: '400px',
           display: 'grid',
-          gridTemplateColumns: 'repeat(20, 1fr)',
-          gridTemplateRows: 'repeat(20, 1fr)',
+          gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+          gridTemplateRows: `repeat(${gridSize}, 1fr)`,
         }}
       >
         {/* Grid background */}
-        {Array.from({ length: 400 }).map((_, i) => (
+        {Array.from({ length: gridSize * gridSize }).map((_, i) => (
           <div 
             key={i} 
             className="border border-gray-800"
-            style={{ gridColumn: (i % 20) + 1, gridRow: Math.floor(i / 20) + 1 }}
+            style={{ gridColumn: (i % gridSize) + 1, gridRow: Math.floor(i / gridSize) + 1 }}
           />
         ))}
 

@@ -147,3 +147,127 @@ export function resetAll(): void {
   const keys = Object.keys(localStorage).filter(key => key.startsWith(STORAGE_PREFIX));
   keys.forEach(key => localStorage.removeItem(key));
 }
+
+// ─── Game Stats & Results ───────────────────────────────────────────────────
+
+export interface GameStats {
+  gamesPlayed: number;
+  gamesWon: number;
+  totalScore: number;
+  bestStreak: number;
+  perGame: Record<string, {
+    plays: number;
+    wins: number;
+    bestScore: number;
+  }>;
+}
+
+export function getGameStats(): GameStats {
+  const key = `${STORAGE_PREFIX}stats`;
+  const value = localStorage.getItem(key);
+  if (!value) {
+    return {
+      gamesPlayed: 0,
+      gamesWon: 0,
+      totalScore: 0,
+      bestStreak: 0,
+      perGame: {},
+    };
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {
+      gamesPlayed: 0,
+      gamesWon: 0,
+      totalScore: 0,
+      bestStreak: 0,
+      perGame: {},
+    };
+  }
+}
+
+export function recordGameResult(
+  gameId: string,
+  result: { won: boolean; score: number; durationMs?: number }
+): void {
+  const stats = getGameStats();
+  
+  // Update global stats
+  stats.gamesPlayed++;
+  if (result.won) stats.gamesWon++;
+  stats.totalScore += result.score;
+  
+  // Update per-game stats
+  if (!stats.perGame[gameId]) {
+    stats.perGame[gameId] = { plays: 0, wins: 0, bestScore: 0 };
+  }
+  stats.perGame[gameId].plays++;
+  if (result.won) stats.perGame[gameId].wins++;
+  if (result.score > stats.perGame[gameId].bestScore) {
+    stats.perGame[gameId].bestScore = result.score;
+  }
+  
+  // Also update legacy high score for compatibility
+  if (result.score > 0) {
+    setHighScore(gameId, result.score);
+  }
+  
+  // Also increment legacy play count
+  incrementPlayCount(gameId);
+  
+  const key = `${STORAGE_PREFIX}stats`;
+  localStorage.setItem(key, JSON.stringify(stats));
+}
+
+// ─── Daily Progress ─────────────────────────────────────────────────────────
+
+export interface DailyProgressEntry {
+  gameId: string;
+  won: boolean;
+  score: number;
+}
+
+export function getDailyProgress(): Record<string, DailyProgressEntry> {
+  const key = `${STORAGE_PREFIX}daily_progress`;
+  const value = localStorage.getItem(key);
+  if (!value) return {};
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+export function setDailyProgress(dateKey: string, entry: DailyProgressEntry): void {
+  const progress = getDailyProgress();
+  progress[dateKey] = entry;
+  const key = `${STORAGE_PREFIX}daily_progress`;
+  localStorage.setItem(key, JSON.stringify(progress));
+}
+
+// ─── Achievements ───────────────────────────────────────────────────────────
+
+export function getUnlockedAchievements(): string[] {
+  const key = `${STORAGE_PREFIX}achievements`;
+  const value = localStorage.getItem(key);
+  if (!value) return [];
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [];
+  }
+}
+
+export function unlockAchievement(id: string): void {
+  const unlocked = getUnlockedAchievements();
+  if (!unlocked.includes(id)) {
+    unlocked.push(id);
+    const key = `${STORAGE_PREFIX}achievements`;
+    localStorage.setItem(key, JSON.stringify(unlocked));
+  }
+}
+
+export function isAchievementUnlocked(id: string): boolean {
+  return getUnlockedAchievements().includes(id);
+}

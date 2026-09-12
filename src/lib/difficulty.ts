@@ -1,7 +1,7 @@
 // Shared difficulty system for all games
 // Each game interprets these multipliers according to its mechanics
 
-export type Difficulty = 'easy' | 'normal' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface DifficultySettings {
   // Time-based games: multiplier for time limits (higher = more time)
@@ -28,7 +28,7 @@ export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultySettings> = {
     complexityMultiplier: 0.7,
     scoreMultiplier: 0.8,
   },
-  normal: {
+  medium: {
     timeMultiplier: 1.0,
     speedMultiplier: 1.0,
     sizeMultiplier: 1.0,

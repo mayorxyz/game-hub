@@ -25,6 +25,14 @@ export {
   clearAllHighScores,
   clearAllGameStates,
   resetAll,
+  // New Tier 2 exports
+  getGameStats,
+  recordGameResult,
+  getDailyProgress,
+  setDailyProgress,
+  getUnlockedAchievements,
+  unlockAchievement,
+  isAchievementUnlocked,
 } from './persistence';
 
-export type { Settings } from './persistence';
+export type { Settings, GameStats, DailyProgressEntry } from './persistence';

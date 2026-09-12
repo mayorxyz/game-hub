@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Gamepad2, Trophy, Clock, Heart, Settings, Menu, X } from 'lucide-react';
+import { Home, Gamepad2, Trophy, Clock, Heart, Settings, Menu, X, Calendar } from 'lucide-react';
 import { useState } from 'react';
 
 interface AppShellProps {
@@ -14,6 +14,7 @@ export default function AppShell({ children }: AppShellProps) {
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/games', label: 'Games', icon: Gamepad2 },
+    { path: '/daily', label: 'Daily', icon: Calendar },
     { path: '/leaderboard', label: 'Records', icon: Trophy },
     { path: '/history', label: 'History', icon: Clock },
     { path: '/favorites', label: 'Favorites', icon: Heart },
