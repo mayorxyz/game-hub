@@ -1,8 +1,8 @@
 // Pure game logic for Minesweeper - no React, no UI, no input handling
 
-export const ROWS = 9;
-export const COLS = 9;
-export const MINES = 10;
+export const BASE_ROWS = 9;
+export const BASE_COLS = 9;
+export const BASE_MINES = 10;
 
 export interface Cell {
   mine: boolean;
@@ -22,9 +22,9 @@ export interface MinesweeperState {
   flagMode: boolean;
 }
 
-export function createBoard(): Board {
-  const b: Board = Array.from({ length: ROWS }, () =>
-    Array.from({ length: COLS }, () => ({
+export function createBoard(rows: number = BASE_ROWS, cols: number = BASE_COLS, mines: number = BASE_MINES): Board {
+  const b: Board = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => ({
       mine: false,
       revealed: false,
       flagged: false,
@@ -32,23 +32,23 @@ export function createBoard(): Board {
     }))
   );
   let p = 0;
-  while (p < MINES) {
-    const r = Math.floor(Math.random() * ROWS);
-    const c = Math.floor(Math.random() * COLS);
+  while (p < mines) {
+    const r = Math.floor(Math.random() * rows);
+    const c = Math.floor(Math.random() * cols);
     if (!b[r][c].mine) {
       b[r][c].mine = true;
       p++;
     }
   }
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
       if (b[r][c].mine) continue;
       let n = 0;
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           const nr = r + dr;
           const nc = c + dc;
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && b[nr][nc].mine) n++;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && b[nr][nc].mine) n++;
         }
       }
       b[r][c].count = n;
@@ -70,10 +70,12 @@ export function createInitialState(): MinesweeperState {
 
 export function flood(board: Board, r: number, c: number): Board {
   const nb = board.map(row => row.map(cell => ({ ...cell })));
+  const rows = board.length;
+  const cols = board[0].length;
   const stack: [number, number][] = [[r, c]];
   while (stack.length) {
     const [cr, cc] = stack.pop()!;
-    if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || nb[cr][cc].revealed || nb[cr][cc].flagged) continue;
+    if (cr < 0 || cr >= rows || cc < 0 || cc >= cols || nb[cr][cc].revealed || nb[cr][cc].flagged) continue;
     nb[cr][cc].revealed = true;
     if (nb[cr][cc].count === 0 && !nb[cr][cc].mine) {
       for (let dr = -1; dr <= 1; dr++) {

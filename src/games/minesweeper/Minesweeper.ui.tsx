@@ -3,16 +3,35 @@ import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import {
   Board,
-  ROWS,
-  COLS,
+  BASE_ROWS,
+  BASE_COLS,
+  BASE_MINES,
   MinesweeperState,
+  createBoard,
   createInitialState,
   resetGame,
 } from './Minesweeper';
 import { handleCellClick, handleContextMenu } from './Minesweeper.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+import DifficultySelector from '../../components/ui/DifficultySelector';
 
 export default function Minesweeper() {
-  const [gameState, setGameState] = useState<MinesweeperState>(createInitialState());
+  const { difficulty, setDifficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  
+  const rows = applyDifficulty(BASE_ROWS, difficultySettings, 'size');
+  const cols = applyDifficulty(BASE_COLS, difficultySettings, 'size');
+  const mines = applyDifficulty(BASE_MINES, difficultySettings, 'complexity');
+  
+  const [gameState, setGameState] = useState<MinesweeperState>(() => ({
+    board: createBoard(rows, cols, mines),
+    isOver: false,
+    isWon: false,
+    time: 0,
+    isRunning: false,
+    flagMode: false,
+  }));
   const [bestTime, setBestTime] = useState(getHighScore('minesweeper'));
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -84,6 +103,28 @@ export default function Minesweeper() {
         {gameState.isOver && <p className="text-red-400">💥 Boom!</p>}
         {gameState.isWon && <p className="text-green-400">🏆 Cleared!</p>}
 
+        {/* Difficulty Selector */}
+        <DifficultySelector 
+          value={difficulty} 
+          onChange={(newDifficulty) => {
+            setDifficulty(newDifficulty);
+            // Reset game when difficulty changes
+            const newSettings = getDifficultySettings(newDifficulty);
+            const newRows = applyDifficulty(BASE_ROWS, newSettings, 'size');
+            const newCols = applyDifficulty(BASE_COLS, newSettings, 'size');
+            const newMines = applyDifficulty(BASE_MINES, newSettings, 'complexity');
+            setGameState({
+              board: createBoard(newRows, newCols, newMines),
+              isOver: false,
+              isWon: false,
+              time: 0,
+              isRunning: false,
+              flagMode: false,
+            });
+          }}
+          disabled={gameState.isRunning}
+        />
+
         {/* Flag Mode Toggle */}
         <button
           onClick={onToggleFlagMode}
@@ -98,11 +139,11 @@ export default function Minesweeper() {
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
           <div
             className="absolute inset-0 grid gap-[1px] bg-gray-700 p-1 rounded overflow-hidden"
-            style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gridTemplateRows: `repeat(${ROWS}, 1fr)` }}
+            style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
           >
             {gameState.board.flat().map((cell, i) => {
-              const r = Math.floor(i / COLS);
-              const c = i % COLS;
+              const r = Math.floor(i / cols);
+              const c = i % cols;
               return (
                 <button
                   key={i}

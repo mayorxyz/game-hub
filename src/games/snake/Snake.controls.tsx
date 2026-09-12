@@ -22,15 +22,17 @@ export function handleStartGame(
 
 export function handleResetGame(
   gridSize: number,
+  scoreMultiplier: number,
   onStateChange: (newState: SnakeState) => void
 ): void {
-  const newState = {
+  const newState: SnakeState = {
     snake: [{ x: Math.floor(gridSize / 2), y: Math.floor(gridSize / 2) }],
     food: { x: 0, y: 0 }, // Will be regenerated
     direction: 'RIGHT' as Direction,
     score: 0,
     isRunning: false,
     isGameOver: false,
+    scoreMultiplier,
   };
   onStateChange(newState);
 }

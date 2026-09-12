@@ -10,14 +10,16 @@ export interface SnakeState {
   score: number;
   isRunning: boolean;
   isGameOver: boolean;
+  scoreMultiplier: number;
 }
 
 export interface SnakeConfig {
   gridSize: number;
   speed: number;
+  scoreMultiplier: number;
 }
 
-export function createInitialState(gridSize: number = 20): SnakeState {
+export function createInitialState(gridSize: number = 20, scoreMultiplier: number = 1.0): SnakeState {
   const initialSnake = [{ x: Math.floor(gridSize / 2), y: Math.floor(gridSize / 2) }];
   return {
     snake: initialSnake,
@@ -26,6 +28,7 @@ export function createInitialState(gridSize: number = 20): SnakeState {
     score: 0,
     isRunning: false,
     isGameOver: false,
+    scoreMultiplier,
   };
 }
 
@@ -78,7 +81,7 @@ export function moveSnake(state: SnakeState, gridSize: number): SnakeState {
       ...state,
       snake: newSnake,
       food: generateFood(newSnake, gridSize),
-      score: state.score + 10,
+      score: state.score + Math.round(10 * state.scoreMultiplier),
     };
   }
 
