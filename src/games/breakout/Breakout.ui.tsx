@@ -3,6 +3,7 @@ import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { playSound } from '../../lib/sound';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -37,6 +38,9 @@ export default function Breakout() {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(ballSpeedMultiplier, brickRows));
   const [highScore, setHighScoreState] = useState(getHighScore('breakout'));
   const { record } = useGameResult('breakout');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const gameStateRef = useRef(gameState);
   const paddleXRef = useRef(gameState.paddleX);
   const animationFrameRef = useRef<number>(0);
@@ -75,7 +79,7 @@ export default function Breakout() {
       ctx.fillStyle = '#111827';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      if (state.isRunning && !state.isGameOver && !state.isWon) {
+      if (state.isRunning && !state.isGameOver && !state.isWon && !pausedRef.current) {
         // Update ball position
         let newBall = updateBallPosition(state.ball);
         

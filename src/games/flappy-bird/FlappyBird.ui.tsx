@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import { useDifficulty } from '../../hooks/useDifficulty';
 import { getDifficultySettings } from '../../lib/difficulty';
@@ -30,6 +31,9 @@ export default function FlappyBird() {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('flappy-bird'));
   const { record } = useGameResult('flappy-bird');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const play = useSound();
   const { difficulty } = useDifficulty();
   const pipeSpeed = PIPE_SPEED * getDifficultySettings(difficulty).speedMultiplier;
@@ -69,7 +73,7 @@ export default function FlappyBird() {
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      if (state.isRunning && !state.isGameOver) {
+      if (state.isRunning && !state.isGameOver && !pausedRef.current) {
         // Update bird
         let newBird = updateBird(state.bird, GRAVITY);
 
@@ -154,6 +158,7 @@ export default function FlappyBird() {
   return (
     <GameLayout
       title="Flappy Bird"
+      pauseOnSpace={false}
       showDifficulty
       score={gameState.score}
       highScore={highScore}

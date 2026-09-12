@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import { useDifficulty } from '../../hooks/useDifficulty';
 import { getDifficultySettings } from '../../lib/difficulty';
@@ -30,6 +31,9 @@ export default function Tetris() {
   const [gameState, setGameState] = useState<TetrisState>(() => loadSavedState<TetrisState>('tetris', d => d as TetrisState) ?? createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('tetris'));
   const { record } = useGameResult('tetris');
+  const { paused, toggle } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   useGameStatePersistence("tetris", gameState, s => s, s => !s.isGameOver);
   const { difficulty } = useDifficulty();
   const difficultySettings = getDifficultySettings(difficulty);
@@ -40,6 +44,7 @@ export default function Tetris() {
     if (gameState.isRunning && !gameState.isGameOver && !gameState.isPaused) {
       const speed = Math.max(60, Math.round((1000 - (gameState.level - 1) * 100) / difficultySettings.speedMultiplier));
       intervalRef.current = setInterval(() => {
+          if (pausedRef.current) return;
         setGameState(prev => tick(prev));
       }, speed);
     } else if (intervalRef.current) {
@@ -98,10 +103,7 @@ export default function Tetris() {
         case ' ':
           handleHardDrop(gameState, setGameState);
           break;
-        case 'p':
-        case 'P':
-          handlePause(gameState, setGameState);
-          break;
+
       }
     };
 
@@ -188,6 +190,7 @@ export default function Tetris() {
   return (
     <GameLayout
       title="Tetris"
+      pauseOnSpace={false}
       showDifficulty
       score={gameState.score}
       highScore={highScore}
@@ -245,20 +248,7 @@ export default function Tetris() {
             </div>
           )}
 
-          {/* Pause overlay */}
-          {gameState.isPaused && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-4">Paused</div>
-                <button
-                  onClick={() => handlePause(gameState, setGameState)}
-                  className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors"
-                >
-                  Resume
-                </button>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Touch controls (mobile) */}
@@ -268,7 +258,7 @@ export default function Tetris() {
           <button onClick={() => handleMoveRight(gameState, setGameState)} aria-label="Move right" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white text-xl">→</button>
           <button onClick={() => handleMoveDown(gameState, setGameState)} aria-label="Soft drop" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white text-xl">↓</button>
           <button onClick={() => handleHardDrop(gameState, setGameState)} aria-label="Hard drop" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white">Drop</button>
-          <button onClick={() => handlePause(gameState, setGameState)} aria-label="Pause" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white">Pause</button>
+          <button onClick={toggle} aria-label="Pause" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white">Pause</button>
         </div>
         {/* Controls info */}
         <div className="text-sm text-gray-400 text-center">

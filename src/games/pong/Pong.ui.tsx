@@ -3,6 +3,7 @@ import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { playSound } from '../../lib/sound';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -36,6 +37,9 @@ export default function Pong() {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(ballSpeed));
   const [highScore, setHighScoreState] = useState(getHighScore('pong'));
   const { record } = useGameResult('pong');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const gameStateRef = useRef(gameState);
   const playerPaddleYRef = useRef(gameState.playerPaddle.y);
   const animationFrameRef = useRef<number>(0);
@@ -88,7 +92,7 @@ export default function Pong() {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      if (state.isRunning && !state.isGameOver) {
+      if (state.isRunning && !state.isGameOver && !pausedRef.current) {
         // Update ball
         let newBall = updateBallPosition(state.ball);
         

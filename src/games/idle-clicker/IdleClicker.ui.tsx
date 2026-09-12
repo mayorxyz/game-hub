@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
@@ -24,6 +25,9 @@ export default function IdleClicker() {
   const [gameState, setGameState] = useState<IdleClickerState>(() => loadSavedState<IdleClickerState>('idle-clicker', d => d as IdleClickerState) ?? createInitialState(costMultiplier, clickPower));
   const [highScore, setHighScoreState] = useState(getHighScore('idle-clicker'));
   const play = useSound();
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   useGameStatePersistence('idle-clicker', gameState, s => s, () => true);
   const coinsRef = useRef(0);
 
@@ -31,6 +35,7 @@ export default function IdleClicker() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+        if (pausedRef.current) return;
       setGameState(prev => {
         const nc = prev.coins + cps / 10;
         coinsRef.current = nc;

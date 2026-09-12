@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import GameLayout from '../../components/ui/GameLayout';
 import {
@@ -28,6 +29,9 @@ export default function WhackAMole() {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(duration));
   const [highScore, setHighScoreState] = useState(getHighScore('whack-a-mole'));
   const { record } = useGameResult('whack-a-mole');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const play = useSound();
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const moleRef = useRef<ReturnType<typeof setInterval>>();
@@ -53,6 +57,7 @@ export default function WhackAMole() {
     if (!gameState.isRunning) return;
 
     timerRef.current = setInterval(() => {
+        if (pausedRef.current) return;
       setGameState(prev => {
         const { time, gameOver } = decrementTime(prev.time);
         return {
@@ -65,6 +70,7 @@ export default function WhackAMole() {
     }, TIMER_INTERVAL);
 
     moleRef.current = setInterval(() => {
+        if (pausedRef.current) return;
       setGameState(prev => ({
         ...prev,
         moles: spawnMoles(),

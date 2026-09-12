@@ -4,6 +4,7 @@ import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useSound } from '../../hooks/useSound';
 import { useGridKeyNav } from '../../hooks/useGridKeyNav';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
   Board,
@@ -38,6 +39,9 @@ export default function Minesweeper({ daily = false, dailySeed }: { daily?: bool
   }));
   const [bestTime, setBestTime] = useState(getHighScore('minesweeper'));
   const { record } = useGameResult('minesweeper', { daily });
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   useGameStatePersistence('minesweeper', gameState, s => s, s => !(s.isOver || s.isWon));
   const play = useSound();
   const { onKeyDown } = useGridKeyNav(cols);
@@ -46,6 +50,7 @@ export default function Minesweeper({ daily = false, dailySeed }: { daily?: bool
   useEffect(() => {
     if (gameState.isRunning && !gameState.isOver && !gameState.isWon) {
       timerRef.current = setInterval(() => {
+          if (pausedRef.current) return;
         setGameState(prev => ({ ...prev, time: prev.time + 1 }));
       }, 1000);
     } else if (timerRef.current) {

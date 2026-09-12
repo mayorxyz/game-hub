@@ -4,6 +4,7 @@ import { ChevronLeft, Trophy, Heart } from 'lucide-react';
 import { getGameBySlug } from '../../data/games';
 import { getHighScore, addRecentlyPlayed, isFavorite } from '../../lib/persistence';
 import { getDailySeed } from '../../lib/daily';
+import { PauseProvider } from '../../lib/pause';
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -100,7 +101,7 @@ export default function GameSession() {
               <div className="text-gray-400">Loading...</div>
             </div>
           }>
-            <GameComponent daily={isDaily} dailySeed={dailySeed} />
+            <PauseProvider key={game.slug}><GameComponent daily={isDaily} dailySeed={dailySeed} /></PauseProvider>
           </Suspense>
         </ErrorBoundary>
       </div>

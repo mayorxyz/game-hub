@@ -3,10 +3,12 @@ import { SnakeState, createInitialState, moveSnake, generateFood } from './Snake
 import { handleDirectionInput, handleStartGame, handleResetGame } from './Snake.controls';
 import { getHighScore, setHighScore } from '../../lib/persistence';
  import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import { useDifficulty } from '../../hooks/useDifficulty';
 import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 import DifficultySelector from '../../components/ui/DifficultySelector';
+import { Pause, Play } from 'lucide-react';
 
 const FRUITS = ['🍎', '🍊', '🍒', '🍓', '🍇', '🍋', '🍑', '🍉'];
 const BASE_GRID_SIZE = 20;
@@ -24,6 +26,9 @@ export default function SnakeUI() {
   const [currentFruit, setCurrentFruit] = useState(FRUITS[0]);
   const [highScore, setHighScoreState] = useState(getHighScore('snake'));
    const { record } = useGameResult('snake');
+  const { paused, toggle } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const play = useSound();
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [showCollisionFlash, setShowCollisionFlash] = useState(false);
@@ -33,6 +38,7 @@ export default function SnakeUI() {
   useEffect(() => {
     if (gameState.isRunning && !gameState.isGameOver) {
       intervalRef.current = setInterval(() => {
+          if (pausedRef.current) return;
         setGameState(prev => {
           const newState = moveSnake(prev, gridSize);
           
@@ -83,6 +89,12 @@ export default function SnakeUI() {
         if (e.key === ' ' || e.key === 'Enter') {
           handleReset();
         }
+        return;
+      }
+
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        toggle();
         return;
       }
 
@@ -174,9 +186,18 @@ export default function SnakeUI() {
       />
 
       {/* Score Display */}
-      <div className="flex gap-8 text-xl font-bold">
+      <div className="flex items-center gap-8 text-xl font-bold">
         <div className="text-green-400">Score: {gameState.score}</div>
         <div className="text-yellow-400">Best: {highScore}</div>
+        <button
+          onClick={toggle}
+          aria-label={paused ? 'Resume game' : 'Pause game'}
+          aria-pressed={paused}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          title={paused ? 'Resume (P)' : 'Pause (P)'}
+        >
+          {paused ? <Play size={16} /> : <Pause size={16} />}
+        </button>
       </div>
 
       {/* Game Board */}
@@ -279,6 +300,19 @@ export default function SnakeUI() {
                 Play Again
               </button>
             </div>
+          </div>
+        )}
+
+        {paused && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-gray-950/85 backdrop-blur-sm rounded-lg">
+            <div className="text-3xl font-bold text-white">Paused</div>
+            <button
+              onClick={toggle}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors"
+            >
+              Resume
+            </button>
+            <p className="text-xs text-gray-400">Press P to resume</p>
           </div>
         )}
       </div>

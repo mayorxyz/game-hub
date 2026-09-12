@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import {
   TypingGameState,
@@ -24,13 +25,16 @@ export default function TypingGame() {
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [highScore, setHighScoreState] = useState(getHighScore('typing-game'));
   const { record } = useGameResult('typing-game');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const play = useSound();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Countdown: running out of time ends the run early.
   useEffect(() => {
     if (!gameState.isStarted || gameState.isFinished) return;
-    const id = setInterval(() => setTimeLeft(prev => Math.max(0, prev - 1)), 1000);
+    const id = setInterval(() => { if (pausedRef.current) return; setTimeLeft(prev => Math.max(0, prev - 1)); }, 1000);
     return () => clearInterval(id);
   }, [gameState.isStarted, gameState.isFinished]);
 
@@ -82,6 +86,7 @@ export default function TypingGame() {
   return (
     <GameLayout
       title="Typing Game"
+      pauseOnSpace={false}
       showDifficulty
       score={gameState.isFinished ? `${gameState.wpm} WPM` : gameState.isStarted ? `${gameState.wpm} WPM` : undefined}
       highScore={highScore}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
+import { usePause } from '../../lib/pause';
 import { useSound } from '../../hooks/useSound';
 import {
   Target,
@@ -30,6 +31,9 @@ export default function AimTrainer() {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(timeLimit));
   const [highScore, setHighScoreState] = useState(getHighScore('aim-trainer'));
   const { record } = useGameResult('aim-trainer');
+  const { paused } = usePause();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const play = useSound();
   const idRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
@@ -58,6 +62,7 @@ export default function AimTrainer() {
     if (!gameState.isRunning) return;
 
     timerRef.current = setInterval(() => {
+        if (pausedRef.current) return;
       setGameState(prev => {
         const { timeLeft, gameOver } = decrementTime(prev.timeLeft);
         return {
@@ -68,7 +73,7 @@ export default function AimTrainer() {
       });
     }, 1000);
 
-    spawnRef.current = setInterval(spawnTargetCallback, spawnInterval);
+    spawnRef.current = setInterval(() => { if (!pausedRef.current) spawnTargetCallback(); }, spawnInterval);
 
     return () => {
       clearInterval(timerRef.current);
