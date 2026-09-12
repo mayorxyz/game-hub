@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
+import { useGridKeyNav } from '../../hooks/useGridKeyNav';
 import {
   Board,
   GameState,
@@ -11,10 +15,30 @@ import {
   makeMove,
 } from './TicTacToe';
 import { handleCellClick } from './TicTacToe.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import type { Difficulty } from '../../lib/difficulty';
+
+// How often the bot plays a random move instead of the perfect one.
+const MISTAKE_CHANCE: Record<Difficulty, number> = { easy: 0.6, medium: 0, hard: 0 };
 
 export default function TicTacToe() {
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const mistakeChance = MISTAKE_CHANCE[difficulty];
+  // On hard the bot takes the first move, so perfect play is no longer enough for a draw.
+  const botStarts = difficulty === 'hard';
+
+  const newGame = useCallback(() => {
+    const state = createInitialState();
+    if (!botStarts) return state;
+    return { ...state, board: makeMove(state.board, getBestMove(state.board), 'O') };
+  }, [botStarts]);
+
+  const [gameState, setGameState] = useState<GameState>(() => loadSavedState<GameState>('tic-tac-toe', d => d as GameState) ?? newGame());
   const [highScore, setHighScoreState] = useState(getHighScore('tic-tac-toe'));
+  const { record } = useGameResult('tic-tac-toe');
+  useGameStatePersistence("tic-tac-toe", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
+  const { onKeyDown } = useGridKeyNav(3);
   const botTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Handle player move
@@ -52,7 +76,7 @@ export default function TicTacToe() {
 
     // Bot move
     botTimeoutRef.current = setTimeout(() => {
-      const botMove = getBestMove(newBoard);
+      const botMove = getBestMove(newBoard, mistakeChance);
       const botBoard = makeMove(newBoard, botMove, 'O');
       setGameState(prev => ({ ...prev, board: botBoard }));
 
@@ -72,9 +96,10 @@ export default function TicTacToe() {
       }
       setGameState(prev => ({ ...prev, isPlayerTurn: true }));
     }, 300);
-  }, [gameState.board, gameState.wins]);
+  }, [gameState.board, gameState.wins, mistakeChance]);
 
   const onCellClick = useCallback((idx: number) => {
+    play('click');
     handleCellClick(
       gameState.board,
       idx,
@@ -84,12 +109,19 @@ export default function TicTacToe() {
     );
   }, [gameState.board, gameState.isGameOver, gameState.isPlayerTurn, onPlayerMove]);
 
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: (gameState.result || '').includes('You win'), score: gameState.wins });
+    }
+  }, [gameState.isGameOver]);
+
   const reset = useCallback(() => {
+    clearSavedState('tic-tac-toe');
     if (botTimeoutRef.current) {
       clearTimeout(botTimeoutRef.current);
     }
-    setGameState(createInitialState());
-  }, []);
+    setGameState(newGame());
+  }, [newGame]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -103,6 +135,7 @@ export default function TicTacToe() {
   return (
     <GameLayout
       title="Tic-Tac-Toe"
+      showDifficulty
       score={`Wins: ${gameState.wins}`}
       highScore={highScore}
       onReset={reset}
@@ -114,7 +147,7 @@ export default function TicTacToe() {
         
         {/* Responsive Game Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
-          <div className="absolute inset-0 grid grid-cols-3 gap-2">
+          <div className="absolute inset-0 grid grid-cols-3 gap-2" onKeyDown={onKeyDown}>
             {gameState.board.map((cell, i) => (
               <button
                 key={i}
@@ -132,7 +165,9 @@ export default function TicTacToe() {
           </div>
         </div>
         
-        <p className="text-gray-500 text-sm">You are X · Bot is O (unbeatable)</p>
+        <p className="text-gray-500 text-sm">
+          You are X · {botStarts ? 'Bot moves first' : mistakeChance > 0 ? 'Bot makes mistakes' : 'Bot is unbeatable'}
+        </p>
       </div>
     </GameLayout>
   );

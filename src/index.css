@@ -1,1 +1,34 @@
 @import "tailwindcss";
+
+/* Honor reduced-motion: the app setting and the OS preference. */
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Colorblind-friendly cues (Okabe-Ito approximation) for red/green/yellow. */
+html.colorblind .bg-green-600,
+html.colorblind .bg-green-500 { background-color: #0072b2 !important; }
+html.colorblind .text-green-400,
+html.colorblind .text-green-600 { color: #56b4e9 !important; }
+html.colorblind .bg-red-600,
+html.colorblind .bg-red-500 { background-color: #d55e00 !important; }
+html.colorblind .text-red-400 { color: #e69f00 !important; }
+html.colorblind .bg-yellow-600,
+html.colorblind .bg-yellow-500 { background-color: #e69f00 !important; }
+html.colorblind .text-yellow-400 { color: #f0e442 !important; }

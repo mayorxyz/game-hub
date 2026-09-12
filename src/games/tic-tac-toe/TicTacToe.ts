@@ -68,7 +68,18 @@ export function minimax(board: Board, isMaximizing: boolean): number {
   }
 }
 
-export function getBestMove(board: Board): number {
+// `mistakeChance` is the probability of playing a random move instead of the
+// perfect minimax one, which is how lower difficulties are made beatable.
+export function getBestMove(board: Board, mistakeChance: number = 0): number {
+  const empties: number[] = [];
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) empties.push(i);
+  }
+  if (empties.length === 0) return -1;
+  if (mistakeChance > 0 && Math.random() < mistakeChance) {
+    return empties[Math.floor(Math.random() * empties.length)];
+  }
+
   let bestScore = -Infinity;
   let bestMove = -1;
   for (let i = 0; i < 9; i++) {

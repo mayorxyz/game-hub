@@ -70,7 +70,7 @@ export default function Daily() {
                   </div>
                 ) : (
                   <Link
-                    to={`/play/${dailyGame.slug}`}
+                    to={`/play/${dailyGame.slug}?daily=1`}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-all"
                   >
                     <Play size={18} />

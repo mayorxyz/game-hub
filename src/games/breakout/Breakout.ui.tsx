@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { playSound } from '../../lib/sound';
+import { useGameResult } from '../../hooks/useGameResult';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -10,6 +12,7 @@ import {
   BRICK_WIDTH,
   BRICK_HEIGHT,
   PADDLE_Y,
+  BRICK_ROWS,
   GameState,
   createInitialState,
   updateBallPosition,
@@ -20,14 +23,25 @@ import {
   checkWin,
 } from './Breakout';
 import { useMouseControls, useTouchControls } from './Breakout.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
 export default function Breakout() {
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  const ballSpeedMultiplier = difficultySettings.speedMultiplier;
+  const brickRows = Math.max(3, applyDifficulty(BRICK_ROWS, difficultySettings, 'size'));
+  const pointsPerBrick = Math.max(1, applyDifficulty(10, difficultySettings, 'score'));
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(ballSpeedMultiplier, brickRows));
   const [highScore, setHighScoreState] = useState(getHighScore('breakout'));
+  const { record } = useGameResult('breakout');
   const gameStateRef = useRef(gameState);
   const paddleXRef = useRef(gameState.paddleX);
   const animationFrameRef = useRef<number>(0);
+  const pointsPerBrickRef = useRef(pointsPerBrick);
+  pointsPerBrickRef.current = pointsPerBrick;
 
   // Keep refs in sync
   gameStateRef.current = gameState;
@@ -73,7 +87,8 @@ export default function Breakout() {
         newBall = brickResult.ball;
         
         const newBricks = brickResult.bricks;
-        const scoreIncrement = brickResult.hit ? 10 : 0;
+        const scoreIncrement = brickResult.hit ? pointsPerBrickRef.current : 0;
+        if (brickResult.hit) playSound('click');
 
         // Check game over
         const isGameOver = checkGameOver(newBall);
@@ -133,13 +148,19 @@ export default function Breakout() {
     };
   }, []);
 
+    useEffect(() => {
+    if (gameState.isGameOver || gameState.isWon) {
+      record({ won: gameState.isWon, score: gameState.score });
+    }
+  }, [gameState.isGameOver, gameState.isWon]);
+
   const reset = useCallback(() => {
-    const newState = createInitialState();
+    const newState = createInitialState(ballSpeedMultiplier, brickRows);
     newState.isRunning = true;
     setGameState(newState);
     gameStateRef.current = newState;
     paddleXRef.current = newState.paddleX;
-  }, []);
+  }, [ballSpeedMultiplier, brickRows]);
 
   const start = useCallback(() => {
     setGameState(prev => ({ ...prev, isRunning: true }));
@@ -148,6 +169,7 @@ export default function Breakout() {
   return (
     <GameLayout
       title="Breakout"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={reset}

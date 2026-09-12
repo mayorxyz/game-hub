@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 import {
   TetrisState,
   BOARD_WIDTH,
@@ -23,14 +27,18 @@ import {
 const CELL_SIZE = 28;
 
 export default function Tetris() {
-  const [gameState, setGameState] = useState<TetrisState>(createInitialState());
+  const [gameState, setGameState] = useState<TetrisState>(() => loadSavedState<TetrisState>('tetris', d => d as TetrisState) ?? createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('tetris'));
+  const { record } = useGameResult('tetris');
+  useGameStatePersistence("tetris", gameState, s => s, s => !s.isGameOver);
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Game loop
   useEffect(() => {
     if (gameState.isRunning && !gameState.isGameOver && !gameState.isPaused) {
-      const speed = Math.max(100, 1000 - (gameState.level - 1) * 100);
+      const speed = Math.max(60, Math.round((1000 - (gameState.level - 1) * 100) / difficultySettings.speedMultiplier));
       intervalRef.current = setInterval(() => {
         setGameState(prev => tick(prev));
       }, speed);
@@ -43,7 +51,7 @@ export default function Tetris() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [gameState.isRunning, gameState.isGameOver, gameState.isPaused, gameState.level]);
+  }, [gameState.isRunning, gameState.isGameOver, gameState.isPaused, gameState.level, difficultySettings.speedMultiplier]);
 
   // Update high score
   useEffect(() => {
@@ -56,6 +64,9 @@ export default function Tetris() {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter'].includes(e.key)) {
+        e.preventDefault();
+      }
       if (gameState.isGameOver) {
         if (e.key === ' ' || e.key === 'Enter') {
           handleReset();
@@ -98,7 +109,14 @@ export default function Tetris() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
 
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
+
   const handleReset = () => {
+    clearSavedState('tetris');
     setGameState(createInitialState());
   };
 
@@ -170,6 +188,7 @@ export default function Tetris() {
   return (
     <GameLayout
       title="Tetris"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={handleReset}
@@ -242,6 +261,15 @@ export default function Tetris() {
           )}
         </div>
 
+        {/* Touch controls (mobile) */}
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-sm">
+          <button onClick={() => handleMoveLeft(gameState, setGameState)} aria-label="Move left" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white text-xl">←</button>
+          <button onClick={() => handleRotate(gameState, setGameState)} aria-label="Rotate" className="px-4 h-12 bg-cyan-700 hover:bg-cyan-600 active:bg-cyan-500 rounded-lg text-white">Rotate</button>
+          <button onClick={() => handleMoveRight(gameState, setGameState)} aria-label="Move right" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white text-xl">→</button>
+          <button onClick={() => handleMoveDown(gameState, setGameState)} aria-label="Soft drop" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white text-xl">↓</button>
+          <button onClick={() => handleHardDrop(gameState, setGameState)} aria-label="Hard drop" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white">Drop</button>
+          <button onClick={() => handlePause(gameState, setGameState)} aria-label="Pause" className="px-4 h-12 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-white">Pause</button>
+        </div>
         {/* Controls info */}
         <div className="text-sm text-gray-400 text-center">
           <div>← → : Move | ↑ : Rotate | ↓ : Soft Drop | Space : Hard Drop | P : Pause</div>

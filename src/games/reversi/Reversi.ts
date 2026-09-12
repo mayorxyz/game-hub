@@ -140,14 +140,14 @@ export function minimax(
   }
 }
 
-export function getBestMove(board: Board): Position {
+export function getBestMove(board: Board, depth: number = 4): Position {
   const moves = getValidMoves(board, 2);
   let bestScore = -Infinity;
   let bestMove = moves[0];
   
   for (const [r, c] of moves) {
     const nb = applyMove(board, r, c, 2);
-    const score = minimax(nb, 4, -Infinity, Infinity, false, 2, 1);
+    const score = minimax(nb, depth, -Infinity, Infinity, false, 2, 1);
     if (score > bestScore) {
       bestScore = score;
       bestMove = [r, c];

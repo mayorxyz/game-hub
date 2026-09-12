@@ -19,11 +19,11 @@ export interface WhackAMoleConfig {
   spawnInterval: number;
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(duration: number = GAME_DURATION): GameState {
   return {
     moles: Array(GRID_SIZE * GRID_SIZE).fill(false),
     score: 0,
-    time: GAME_DURATION,
+    time: duration,
     isRunning: false,
     isGameOver: false,
   };

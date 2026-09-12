@@ -1,17 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   WORDS,
+  GRID_SIZE,
   WordSearchState,
   createInitialState,
-  resetGame,
 } from './WordSearch';
 import { handleWordClick } from './WordSearch.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty, type Difficulty } from '../../lib/difficulty';
+import DifficultySelector from '../../components/ui/DifficultySelector';
 
-export default function WordSearch() {
-  const [gameState, setGameState] = useState<WordSearchState>(createInitialState());
+export default function WordSearch({ daily = false, dailySeed }: { daily?: boolean; dailySeed?: number }) {
+  const { difficulty, setDifficulty } = useDifficulty();
+
+  const makeState = (d: Difficulty) => createInitialState(
+    daily ? dailySeed : undefined,
+    Math.max(6, applyDifficulty(GRID_SIZE, getDifficultySettings(d), 'size')),
+    Math.max(4, Math.min(WORDS.length, applyDifficulty(WORDS.length, getDifficultySettings(d), 'complexity')))
+  );
+
+  const [gameState, setGameState] = useState<WordSearchState>(() => {
+    const saved = loadSavedState<WordSearchState>('word-search', d => {
+      const raw = d as Omit<WordSearchState, 'positions' | 'found'> & { positions: [string, [number, number][]][]; found: string[] };
+      return { ...raw, positions: new Map(raw.positions ?? []), found: new Set(raw.found ?? []) };
+    });
+    return saved ?? makeState(difficulty);
+  });
+  // The stored grid is clamped to the longest hidden word, so read the real size back.
+  const gridSize = gameState.grid.length;
   const [highScore, setHighScoreState] = useState(getHighScore('word-search'));
+  const { record } = useGameResult('word-search', { daily });
+  useGameStatePersistence('word-search', gameState, s => ({ ...s, positions: Array.from(s.positions.entries()), found: Array.from(s.found) }), s => !s.isWon);
+  const play = useSound();
 
   const onStateChange = (newState: WordSearchState) => {
     setGameState(newState);
@@ -25,30 +50,48 @@ export default function WordSearch() {
   };
 
   const onWordClick = (word: string) => {
+    play('click');
     handleWordClick(gameState, word, onStateChange);
   };
 
+  useEffect(() => {
+    if (gameState.isWon) {
+      record({ won: true, score: 1000 });
+    }
+  }, [gameState.isWon]);
+
   const onReset = () => {
-    setGameState(resetGame());
+    clearSavedState('word-search');
+    setGameState(makeState(difficulty));
   };
 
   return (
     <GameLayout
       title="Word Search"
-      score={`${gameState.found.size}/${WORDS.length}`}
+      score={`${gameState.found.size}/${gameState.words.length}`}
       highScore={highScore}
       onReset={onReset}
     >
       <div className="flex flex-col items-center justify-between w-full h-full gap-4">
         {gameState.isWon && <p className="text-green-400 text-xl font-bold">🎉 All words found!</p>}
+
+        {/* Difficulty Selector */}
+        <DifficultySelector
+          value={difficulty}
+          onChange={(newDifficulty) => {
+            setDifficulty(newDifficulty);
+            // Grid size and word count are baked into the state; the daily seed keeps the layout deterministic.
+            setGameState(makeState(newDifficulty));
+          }}
+        />
         
         {/* Responsive Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
           <div
             className="absolute inset-0 grid gap-0 bg-gray-800 p-2 rounded-lg overflow-hidden"
             style={{
-              gridTemplateColumns: `repeat(10, 1fr)`,
-              gridTemplateRows: `repeat(10, 1fr)`,
+              gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+              gridTemplateRows: `repeat(${gridSize}, 1fr)`,
             }}
           >
             {gameState.grid.flat().map((ch, i) => (
@@ -60,7 +103,7 @@ export default function WordSearch() {
         </div>
         
         <div className="flex flex-wrap gap-2 justify-center">
-          {WORDS.map(word => (
+          {gameState.words.map(word => (
             <button
               key={word}
               onClick={() => onWordClick(word)}

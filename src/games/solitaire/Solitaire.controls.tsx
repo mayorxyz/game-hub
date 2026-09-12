@@ -2,8 +2,8 @@
 
 import { SolitaireState, drawCard, placeOnFoundation, placeOnTableau, selectWaste } from './Solitaire';
 
-export function handleDrawCard(state: SolitaireState, onStateChange: (newState: SolitaireState) => void): void {
-  const newState = drawCard(state);
+export function handleDrawCard(state: SolitaireState, onStateChange: (newState: SolitaireState) => void, drawCount: number = 1): void {
+  const newState = drawCard(state, drawCount);
   onStateChange(newState);
 }
 

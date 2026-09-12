@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
+import { getHighScore } from '../../lib/persistence';
 import {
   MastermindState,
   COLORS,
@@ -14,15 +18,38 @@ import {
   handleSubmit,
   handleClear,
 } from './Mastermind.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
 export default function Mastermind() {
-  const [gameState, setGameState] = useState<MastermindState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  // Longer codes and fewer attempts on harder settings.
+  const codeLength = Math.min(5, Math.max(3, applyDifficulty(CODE_LENGTH, difficultySettings, 'complexity')));
+  const maxAttempts = Math.max(6, Math.round(MAX_ATTEMPTS / difficultySettings.complexityMultiplier));
+  const scoreMultiplier = difficultySettings.scoreMultiplier;
+
+  const [gameState, setGameState] = useState<MastermindState>(() => loadSavedState<MastermindState>('mastermind', d => d as MastermindState) ?? createInitialState(codeLength));
+  const { record } = useGameResult('mastermind');
+  useGameStatePersistence("mastermind", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
+  const [highScore, setHighScoreState] = useState(getHighScore('mastermind'));
 
   const handleReset = () => {
-    setGameState(createInitialState());
+    clearSavedState('mastermind');
+    setGameState(createInitialState(codeLength));
   };
 
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      const score = gameState.isWon ? Math.round((maxAttempts - gameState.guesses.length + 1) * 100 * scoreMultiplier) : 0;
+      record({ won: gameState.isWon, score });
+      if (gameState.isWon) setHighScoreState(prev => Math.max(prev, score));
+    }
+  }, [gameState.isGameOver, maxAttempts, scoreMultiplier]);
+
   const onColorSelect = (color: Color) => {
+    play('click');
     handleColorSelect(gameState, color, setGameState);
   };
 
@@ -31,7 +58,7 @@ export default function Mastermind() {
   };
 
   const onSubmit = () => {
-    handleSubmit(gameState, setGameState);
+    handleSubmit(gameState, setGameState, maxAttempts);
   };
 
   const onClear = () => {
@@ -53,13 +80,15 @@ export default function Mastermind() {
   return (
     <GameLayout
       title="Mastermind"
-      score={`Attempt ${gameState.guesses.length + 1}/${MAX_ATTEMPTS}`}
-      onReset={handleReset}
+      showDifficulty
+      score={`Attempt ${gameState.guesses.length + 1}/${maxAttempts}`}
+      highScore={highScore}
+  onReset={handleReset}
     >
       <div className="flex flex-col items-center gap-4 p-4">
         {/* Secret code (hidden) */}
         <div className="flex gap-2 mb-4">
-          {Array.from({ length: CODE_LENGTH }).map((_, i) => (
+          {Array.from({ length: gameState.secretCode.length }).map((_, i) => (
             <div
               key={i}
               className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center text-2xl"
@@ -95,7 +124,7 @@ export default function Mastermind() {
 
         {/* Current guess */}
         <div className="flex gap-2 mb-4">
-          {Array.from({ length: CODE_LENGTH }).map((_, i) => (
+          {Array.from({ length: gameState.secretCode.length }).map((_, i) => (
             <div
               key={i}
               className={`w-12 h-12 rounded-lg border-2 border-gray-600 flex items-center justify-center ${
@@ -111,7 +140,7 @@ export default function Mastermind() {
             <button
               key={color}
               onClick={() => onColorSelect(color)}
-              disabled={gameState.isGameOver || gameState.currentGuess.length >= CODE_LENGTH}
+              disabled={gameState.isGameOver || gameState.currentGuess.length >= gameState.secretCode.length}
               className={`w-12 h-12 rounded-lg ${getColorClass(color)} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed`}
             />
           ))}
@@ -135,7 +164,7 @@ export default function Mastermind() {
           </button>
           <button
             onClick={onSubmit}
-            disabled={gameState.isGameOver || gameState.currentGuess.length !== CODE_LENGTH}
+            disabled={gameState.isGameOver || gameState.currentGuess.length !== gameState.secretCode.length}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
           >
             Submit

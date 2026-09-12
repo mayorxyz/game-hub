@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useSound } from '../../hooks/useSound';
+import { useGridKeyNav } from '../../hooks/useGridKeyNav';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
   Board,
   BASE_ROWS,
@@ -16,7 +20,7 @@ import { useDifficulty } from '../../hooks/useDifficulty';
 import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 import DifficultySelector from '../../components/ui/DifficultySelector';
 
-export default function Minesweeper() {
+export default function Minesweeper({ daily = false, dailySeed }: { daily?: boolean; dailySeed?: number }) {
   const { difficulty, setDifficulty } = useDifficulty();
   const difficultySettings = getDifficultySettings(difficulty);
   
@@ -24,8 +28,8 @@ export default function Minesweeper() {
   const cols = applyDifficulty(BASE_COLS, difficultySettings, 'size');
   const mines = applyDifficulty(BASE_MINES, difficultySettings, 'complexity');
   
-  const [gameState, setGameState] = useState<MinesweeperState>(() => ({
-    board: createBoard(rows, cols, mines),
+  const [gameState, setGameState] = useState<MinesweeperState>(() => loadSavedState<MinesweeperState>('minesweeper', d => d as MinesweeperState) ?? ({
+    board: createBoard(rows, cols, mines, daily ? dailySeed : undefined),
     isOver: false,
     isWon: false,
     time: 0,
@@ -33,6 +37,10 @@ export default function Minesweeper() {
     flagMode: false,
   }));
   const [bestTime, setBestTime] = useState(getHighScore('minesweeper'));
+  const { record } = useGameResult('minesweeper', { daily });
+  useGameStatePersistence("minesweeper", gameState, s => s, s => !s.isOver);
+  const play = useSound();
+  const { onKeyDown } = useGridKeyNav(cols);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -58,7 +66,14 @@ export default function Minesweeper() {
     }
   }, [gameState.isWon, gameState.time]);
 
+  useEffect(() => {
+    if (gameState.isOver || gameState.isWon) {
+      record({ won: gameState.isWon, score: 0 });
+    }
+  }, [gameState.isOver, gameState.isWon]);
+
   const onReveal = (board: Board, isOver: boolean, isWon: boolean) => {
+    play('click');
     setGameState(prev => ({
       ...prev,
       board,
@@ -82,6 +97,7 @@ export default function Minesweeper() {
   };
 
   const onReset = () => {
+    clearSavedState('minesweeper');
     setGameState(resetGame());
     setBestTime(getHighScore('minesweeper'));
   };
@@ -114,7 +130,7 @@ export default function Minesweeper() {
             const newCols = applyDifficulty(BASE_COLS, newSettings, 'size');
             const newMines = applyDifficulty(BASE_MINES, newSettings, 'complexity');
             setGameState({
-              board: createBoard(newRows, newCols, newMines),
+              board: createBoard(newRows, newCols, newMines, daily ? dailySeed : undefined),
               isOver: false,
               isWon: false,
               time: 0,
@@ -138,7 +154,7 @@ export default function Minesweeper() {
         {/* Responsive Game Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
           <div
-            className="absolute inset-0 grid gap-[1px] bg-gray-700 p-1 rounded overflow-hidden"
+            className="absolute inset-0 grid gap-[1px] bg-gray-700 p-1 rounded overflow-hidden" onKeyDown={onKeyDown}
             style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
           >
             {gameState.board.flat().map((cell, i) => {

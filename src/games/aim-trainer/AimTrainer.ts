@@ -27,11 +27,11 @@ export interface AimTrainerConfig {
   spawnInterval: number;
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(timeLimit: number = TIME_LIMIT): GameState {
   return {
     targets: [],
     score: 0,
-    timeLeft: TIME_LIMIT,
+    timeLeft: timeLimit,
     isRunning: false,
     misses: 0,
   };

@@ -1,18 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
 import {
   TypingGameState,
   startGame,
   calculateAccuracy,
+  calculateWPM,
   resetGame,
 } from './TypingGame';
 import { handleInputChange } from './TypingGame.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+
+const BASE_TIME_LIMIT = 60;
 
 export default function TypingGame() {
+  const { difficulty } = useDifficulty();
+  const timeLimit = applyDifficulty(BASE_TIME_LIMIT, getDifficultySettings(difficulty), 'time');
+
   const [gameState, setGameState] = useState<TypingGameState>(resetGame());
+  const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [highScore, setHighScoreState] = useState(getHighScore('typing-game'));
+  const { record } = useGameResult('typing-game');
+  const play = useSound();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Countdown: running out of time ends the run early.
+  useEffect(() => {
+    if (!gameState.isStarted || gameState.isFinished) return;
+    const id = setInterval(() => setTimeLeft(prev => Math.max(0, prev - 1)), 1000);
+    return () => clearInterval(id);
+  }, [gameState.isStarted, gameState.isFinished]);
+
+  useEffect(() => {
+    if (!gameState.isStarted || gameState.isFinished || timeLeft > 0) return;
+    setGameState(s => s.isFinished ? s : {
+      ...s,
+      isFinished: true,
+      wpm: s.input.trim().length > 0 ? calculateWPM(s.startTime, s.input) : 0,
+    });
+  }, [timeLeft, gameState.isStarted, gameState.isFinished]);
 
   const onStateChange = (newState: TypingGameState) => {
     setGameState(newState);
@@ -26,16 +55,25 @@ export default function TypingGame() {
   };
 
   const onStart = () => {
+    setTimeLeft(timeLimit);
     const newState = startGame(gameState);
     setGameState(newState);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    play('tick');
     handleInputChange(gameState, e.target.value, onStateChange);
   };
 
+    useEffect(() => {
+    if (gameState.isFinished) {
+      record({ won: true, score: gameState.wpm });
+    }
+  }, [gameState.isFinished]);
+
   const onReset = () => {
+    setTimeLeft(timeLimit);
     setGameState(resetGame());
   };
 
@@ -44,6 +82,7 @@ export default function TypingGame() {
   return (
     <GameLayout
       title="Typing Game"
+      showDifficulty
       score={gameState.isFinished ? `${gameState.wpm} WPM` : gameState.isStarted ? `${gameState.wpm} WPM` : undefined}
       highScore={highScore}
       onReset={onReset}
@@ -55,7 +94,7 @@ export default function TypingGame() {
             className="min-h-[48px] px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg font-bold"
             style={{ touchAction: 'manipulation' }}
           >
-            Start Typing
+            Start Typing ({timeLimit}s)
           </button>
         )}
         {gameState.isFinished && (
@@ -101,6 +140,9 @@ export default function TypingGame() {
               </span>
               <span>
                 Accuracy: <span className="text-white font-bold">{accuracy}%</span>
+              </span>
+              <span>
+                Time: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-400' : 'text-white'}`}>{timeLeft}s</span>
               </span>
             </div>
           </>

@@ -36,13 +36,13 @@ export interface PongConfig {
   botSpeed: number;
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(speed: number = 4): GameState {
   return {
     ball: {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT / 2,
-      dx: (Math.random() > 0.5 ? 1 : -1) * 4,
-      dy: (Math.random() - 0.5) * 4,
+      dx: (Math.random() > 0.5 ? 1 : -1) * speed,
+      dy: (Math.random() - 0.5) * speed,
     },
     playerPaddle: {
       y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
@@ -99,7 +99,7 @@ export function checkPaddleCollision(ball: Ball, paddleY: number, isPlayer: bool
   return { x, y, dx, dy };
 }
 
-export function checkScoring(ball: Ball, playerScore: number, botScore: number): { ball: Ball; playerScore: number; botScore: number; scored: boolean } {
+export function checkScoring(ball: Ball, playerScore: number, botScore: number, speed: number = 4): { ball: Ball; playerScore: number; botScore: number; scored: boolean } {
   let newBall = { ...ball };
   let newPlayerScore = playerScore;
   let newBotScore = botScore;
@@ -111,8 +111,8 @@ export function checkScoring(ball: Ball, playerScore: number, botScore: number):
     newBall = {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT / 2,
-      dx: 4,
-      dy: (Math.random() - 0.5) * 4,
+      dx: speed,
+      dy: (Math.random() - 0.5) * speed,
     };
     scored = true;
   }
@@ -123,8 +123,8 @@ export function checkScoring(ball: Ball, playerScore: number, botScore: number):
     newBall = {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT / 2,
-      dx: -4,
-      dy: (Math.random() - 0.5) * 4,
+      dx: -speed,
+      dy: (Math.random() - 0.5) * speed,
     };
     scored = true;
   }
@@ -132,13 +132,13 @@ export function checkScoring(ball: Ball, playerScore: number, botScore: number):
   return { ball: newBall, playerScore: newPlayerScore, botScore: newBotScore, scored };
 }
 
-export function updateBotPaddle(botY: number, ballY: number): number {
+export function updateBotPaddle(botY: number, ballY: number, botSpeed: number = BOT_SPEED): number {
   const botCenter = botY + PADDLE_HEIGHT / 2;
   const diff = ballY - botCenter;
   
   let newBotY = botY;
-  if (Math.abs(diff) > BOT_SPEED) {
-    newBotY += Math.sign(diff) * BOT_SPEED;
+  if (Math.abs(diff) > botSpeed) {
+    newBotY += Math.sign(diff) * botSpeed;
   } else {
     newBotY += diff;
   }

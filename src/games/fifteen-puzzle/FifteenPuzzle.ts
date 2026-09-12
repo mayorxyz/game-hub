@@ -15,16 +15,17 @@ export interface FifteenPuzzleConfig {
   boardSize: number;
 }
 
-export function createBoard(): Board {
-  const tiles = Array.from({ length: TOTAL_TILES - 1 }, (_, i) => i + 1);
+export function createBoard(size: number = BOARD_SIZE): Board {
+  const totalTiles = size * size;
+  const tiles = Array.from({ length: totalTiles - 1 }, (_, i) => i + 1);
   let board: number[];
   do {
     board = [...tiles, 0].sort(() => Math.random() - 0.5);
-  } while (!isSolvable(board));
+  } while (!isSolvable(board, size));
   return board;
 }
 
-export function isSolvable(board: Board): boolean {
+export function isSolvable(board: Board, size: number = BOARD_SIZE): boolean {
   let inversions = 0;
   const tiles = board.filter(v => v !== 0);
   for (let i = 0; i < tiles.length; i++) {
@@ -34,8 +35,8 @@ export function isSolvable(board: Board): boolean {
   }
   // For even-sized grids: solvable if (inversions + row of blank from bottom) is odd
   const blankIdx = board.indexOf(0);
-  const rowFromTop = Math.floor(blankIdx / BOARD_SIZE);
-  const rowFromBottom = BOARD_SIZE - 1 - rowFromTop;
+  const rowFromTop = Math.floor(blankIdx / size);
+  const rowFromBottom = size - 1 - rowFromTop;
   return (inversions + rowFromBottom) % 2 === 1;
 }
 
@@ -46,20 +47,20 @@ export function isWon(board: Board): boolean {
   return board[board.length - 1] === 0;
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(size: number = BOARD_SIZE): GameState {
   return {
-    board: createBoard(),
+    board: createBoard(size),
     moves: 0,
     isWon: false,
   };
 }
 
-export function canMove(board: Board, idx: number): boolean {
+export function canMove(board: Board, idx: number, size: number = BOARD_SIZE): boolean {
   const blankIdx = board.indexOf(0);
-  const r = Math.floor(idx / BOARD_SIZE);
-  const c = idx % BOARD_SIZE;
-  const blankR = Math.floor(blankIdx / BOARD_SIZE);
-  const blankC = blankIdx % BOARD_SIZE;
+  const r = Math.floor(idx / size);
+  const c = idx % size;
+  const blankR = Math.floor(blankIdx / size);
+  const blankC = blankIdx % size;
   
   return (
     (Math.abs(r - blankR) === 1 && c === blankC) ||

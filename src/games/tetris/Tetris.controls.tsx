@@ -1,12 +1,14 @@
 // Input handling for Tetris - no React UI, just control logic
 
-import { TetrisState, movePiece, rotatePiece, isValidPosition } from './Tetris';
+import { TetrisState, movePiece, rotatePiece, isValidPosition, lockPiece } from './Tetris';
+import { playSound } from '../../lib/sound';
 
 export function handleMoveLeft(
   state: TetrisState,
   onStateChange: (newState: TetrisState) => void
 ): void {
   if (!state.currentPiece || state.isGameOver || state.isPaused) return;
+  playSound('move');
   
   const movedPiece = movePiece(state.currentPiece, -1, 0);
   if (isValidPosition(state.board, movedPiece)) {
@@ -19,6 +21,7 @@ export function handleMoveRight(
   onStateChange: (newState: TetrisState) => void
 ): void {
   if (!state.currentPiece || state.isGameOver || state.isPaused) return;
+  playSound('move');
   
   const movedPiece = movePiece(state.currentPiece, 1, 0);
   if (isValidPosition(state.board, movedPiece)) {
@@ -31,6 +34,7 @@ export function handleMoveDown(
   onStateChange: (newState: TetrisState) => void
 ): void {
   if (!state.currentPiece || state.isGameOver || state.isPaused) return;
+  playSound('move');
   
   const movedPiece = movePiece(state.currentPiece, 0, 1);
   if (isValidPosition(state.board, movedPiece)) {
@@ -43,10 +47,24 @@ export function handleRotate(
   onStateChange: (newState: TetrisState) => void
 ): void {
   if (!state.currentPiece || state.isGameOver || state.isPaused) return;
-  
+  playSound('click');
+
   const rotatedPiece = rotatePiece(state.currentPiece);
-  if (isValidPosition(state.board, rotatedPiece)) {
-    onStateChange({ ...state, currentPiece: rotatedPiece });
+  // Wall kicks: try in place, then nudge sideways / up before giving up.
+  const kicks: [number, number][] = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [2, 0],
+    [-2, 0],
+    [0, -1],
+  ];
+  for (const [dx, dy] of kicks) {
+    const candidate = movePiece(rotatedPiece, dx, dy);
+    if (isValidPosition(state.board, candidate)) {
+      onStateChange({ ...state, currentPiece: candidate });
+      return;
+    }
   }
 }
 
@@ -55,19 +73,22 @@ export function handleHardDrop(
   onStateChange: (newState: TetrisState) => void
 ): void {
   if (!state.currentPiece || state.isGameOver || state.isPaused) return;
+  playSound('success');
   
-  let dropDistance = 0;
+
+
+  
   let currentPiece = state.currentPiece;
-  
+
   while (isValidPosition(state.board, movePiece(currentPiece, 0, 1))) {
     currentPiece = movePiece(currentPiece, 0, 1);
-    dropDistance++;
+
   }
   
-  // Apply drop and lock piece
-  const newState = { ...state, currentPiece };
-  // We need to import lockPiece but to avoid circular dependency, we'll handle it in the UI
-  onStateChange(newState);
+
+  const dropped = { ...state, currentPiece };
+  // Drop to the floor and lock immediately
+  onStateChange(lockPiece(dropped));
 }
 
 export function handlePause(

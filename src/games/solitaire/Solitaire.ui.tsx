@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
   Card,
   SolitaireState,
@@ -16,16 +19,29 @@ import {
   handleTableauClick,
   handleWasteClick,
 } from './Solitaire.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, type Difficulty } from '../../lib/difficulty';
+
+// Klondike's classic variants: drawing one card at a time is far more forgiving
+// than drawing three (only the top of the waste is ever playable).
+const DRAW_COUNT: Record<Difficulty, number> = { easy: 1, medium: 1, hard: 3 };
 
 export default function Solitaire() {
-  const [gameState, setGameState] = useState<SolitaireState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const drawCount = DRAW_COUNT[difficulty];
+  const scoreMultiplier = getDifficultySettings(difficulty).scoreMultiplier;
+
+  const [gameState, setGameState] = useState<SolitaireState>(() => loadSavedState<SolitaireState>('solitaire', d => d as SolitaireState) ?? createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('solitaire'));
+  const { record } = useGameResult('solitaire');
+  const play = useSound();
+  useGameStatePersistence('solitaire', gameState, s => s, s => !s.isWon);
 
   const onStateChange = (newState: SolitaireState) => {
     setGameState(newState);
     if (newState.isWon) {
       setHighScoreState(prev => {
-        const best = Math.max(prev, 1000);
+        const best = Math.max(prev, Math.round(1000 * scoreMultiplier));
         setHighScore('solitaire', best);
         return best;
       });
@@ -33,7 +49,8 @@ export default function Solitaire() {
   };
 
   const onDrawCard = () => {
-    handleDrawCard(gameState, onStateChange);
+    play('click');
+    handleDrawCard(gameState, onStateChange, drawCount);
   };
 
   const onFoundationClick = (foundationIdx: number) => {
@@ -48,7 +65,14 @@ export default function Solitaire() {
     handleWasteClick(gameState, onStateChange);
   };
 
+    useEffect(() => {
+    if (gameState.isWon) {
+      record({ won: true, score: Math.round(1000 * scoreMultiplier) });
+    }
+  }, [gameState.isWon]);
+
   const onReset = () => {
+    clearSavedState('solitaire');
     setGameState(resetGame());
   };
 
@@ -57,6 +81,7 @@ export default function Solitaire() {
   return (
     <GameLayout
       title="Solitaire"
+      showDifficulty
       score={`${totalFound}/52 · ${gameState.moves} moves`}
       highScore={highScore}
       onReset={onReset}
@@ -158,7 +183,7 @@ export default function Solitaire() {
           ))}
         </div>
 
-        <p className="text-gray-500 text-xs">Click card to select, then click destination</p>
+        <p className="text-gray-500 text-xs">Click card to select, then click destination{drawCount > 1 ? ` · Drawing ${drawCount} cards` : ''}</p>
       </div>
     </GameLayout>
   );

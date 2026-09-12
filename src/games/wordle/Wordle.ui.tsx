@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   WORD_LEN,
   MAX_GUESSES,
@@ -12,15 +15,24 @@ import {
   getLetterState,
 } from './Wordle';
 import { handleLetterInput, handleBackspace, handleSubmit } from './Wordle.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 
-export default function Wordle() {
-  const [gameState, setGameState] = useState<WordleState>(createInitialState());
+export default function Wordle({ daily = false, dailySeed }: { daily?: boolean; dailySeed?: number }) {
+  const { difficulty } = useDifficulty();
+  // Fewer allowed guesses on harder settings (inverse of the complexity multiplier).
+  const maxGuesses = Math.max(3, Math.round(MAX_GUESSES / getDifficultySettings(difficulty).complexityMultiplier));
+
+  const [gameState, setGameState] = useState<WordleState>(() => (!daily ? loadSavedState<WordleState>('wordle', d => d as WordleState) : null) ?? createInitialState(daily ? dailySeed : undefined));
   const [highScore, setHighScoreState] = useState(getHighScore('wordle'));
+  const { record } = useGameResult('wordle', { daily });
+  useGameStatePersistence("wordle", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
 
   const onStateChange = (newState: WordleState) => {
     setGameState(newState);
     if (newState.isWon) {
-      const score = MAX_GUESSES - newState.guesses.length + 1;
+      const score = maxGuesses - newState.guesses.length + 1;
       setHighScoreState(prev => {
         const best = Math.max(prev, score * 100);
         setHighScore('wordle', best);
@@ -30,6 +42,7 @@ export default function Wordle() {
   };
 
   const onLetterInput = (letter: string) => {
+    play('click');
     handleLetterInput(gameState, letter, onStateChange);
   };
 
@@ -38,16 +51,28 @@ export default function Wordle() {
   };
 
   const onSubmit = () => {
-    handleSubmit(gameState, onStateChange);
+    play('move');
+    handleSubmit(gameState, onStateChange, maxGuesses);
   };
 
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      record({
+        won: gameState.isWon,
+        score: gameState.isWon ? (maxGuesses - gameState.guesses.length + 1) * 100 : 0,
+      });
+    }
+  }, [gameState.isGameOver]);
+
   const onReset = () => {
-    setGameState(resetGame());
+    clearSavedState('wordle');
+    setGameState(resetGame(daily ? dailySeed : undefined));
   };
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (gameState.isGameOver) return;
+      if (e.key === 'Backspace') e.preventDefault();
       if (e.key === 'Enter') onSubmit();
       else if (e.key === 'Backspace') onBackspace();
       else if (/^[a-zA-Z]$/.test(e.key) && gameState.currentGuess.length < WORD_LEN) {
@@ -58,7 +83,7 @@ export default function Wordle() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [gameState]);
 
-  const rows = getRows(gameState);
+  const rows = getRows(gameState, maxGuesses);
 
   const stateColors: Record<LetterState, string> = {
     correct: 'bg-green-600 border-green-600',
@@ -70,7 +95,8 @@ export default function Wordle() {
   return (
     <GameLayout
       title="Wordle"
-      score={gameState.isWon ? `${MAX_GUESSES - gameState.guesses.length + 1}/6` : undefined}
+      showDifficulty
+      score={gameState.isWon ? `${maxGuesses - gameState.guesses.length + 1}/${maxGuesses}` : undefined}
       highScore={highScore}
       onReset={onReset}
     >

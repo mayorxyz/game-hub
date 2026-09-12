@@ -25,6 +25,7 @@ export interface GameDefinition {
   category: GameCategory;
   genres: GameGenre[];
   mode: GameMode;
+  modes?: GameMode[];
   difficulty: GameDifficulty;
   estimatedPlayTime: string;
   controls: GameControls;

@@ -75,7 +75,9 @@ export function evaluate(board: Board, player: number): number {
   return score;
 }
 
-export function getBestMove(board: Board): [number, number] {
+// `skill` below 1 makes the bot play a random candidate some of the time.
+// A larger `radius` widens the searched area around existing stones.
+export function getBestMove(board: Board, skill: number = 1, radius: number = 2): [number, number] {
   let bestScore = -Infinity;
   let bestMove: [number, number] = [7, 7];
   const candidates: [number, number][] = [];
@@ -83,8 +85,8 @@ export function getBestMove(board: Board): [number, number] {
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (board[r][c] !== 0) {
-        for (let dr = -2; dr <= 2; dr++) {
-          for (let dc = -2; dc <= 2; dc++) {
+        for (let dr = -radius; dr <= radius; dr++) {
+          for (let dc = -radius; dc <= radius; dc++) {
             const nr = r + dr;
             const nc = c + dc;
             if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 0) {
@@ -99,6 +101,10 @@ export function getBestMove(board: Board): [number, number] {
   }
   
   if (candidates.length === 0) return [7, 7];
+
+  if (Math.random() > skill) {
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
 
   for (const [r, c] of candidates) {
     board[r][c] = 2;

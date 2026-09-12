@@ -19,9 +19,9 @@ export interface MastermindState {
   isWon: boolean;
 }
 
-export function createInitialState(): MastermindState {
+export function createInitialState(codeLength: number = CODE_LENGTH): MastermindState {
   const secretCode: Color[] = [];
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < codeLength; i++) {
     secretCode.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
   }
   
@@ -35,7 +35,7 @@ export function createInitialState(): MastermindState {
 }
 
 export function addColorToGuess(state: MastermindState, color: Color): MastermindState {
-  if (state.isGameOver || state.currentGuess.length >= CODE_LENGTH) return state;
+  if (state.isGameOver || state.currentGuess.length >= state.secretCode.length) return state;
   
   return {
     ...state,
@@ -52,8 +52,9 @@ export function removeColorFromGuess(state: MastermindState): MastermindState {
   };
 }
 
-export function submitGuess(state: MastermindState): MastermindState {
-  if (state.isGameOver || state.currentGuess.length !== CODE_LENGTH) return state;
+export function submitGuess(state: MastermindState, maxAttempts: number = MAX_ATTEMPTS): MastermindState {
+  const codeLength = state.secretCode.length;
+  if (state.isGameOver || state.currentGuess.length !== codeLength) return state;
   
   // Calculate pegs
   let blackPegs = 0;
@@ -63,7 +64,7 @@ export function submitGuess(state: MastermindState): MastermindState {
   const guessCopy: (Color | null)[] = [...state.currentGuess];
   
   // First pass: count black pegs (exact matches)
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < codeLength; i++) {
     if (guessCopy[i] === secretCopy[i]) {
       blackPegs++;
       secretCopy[i] = null; // Mark as used
@@ -72,7 +73,7 @@ export function submitGuess(state: MastermindState): MastermindState {
   }
   
   // Second pass: count white pegs (color matches in wrong position)
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < codeLength; i++) {
     if (guessCopy[i] === null) continue;
     const idx = secretCopy.indexOf(guessCopy[i]);
     if (idx !== -1) {
@@ -88,8 +89,8 @@ export function submitGuess(state: MastermindState): MastermindState {
   };
   
   const newGuesses = [...state.guesses, guess];
-  const isWon = blackPegs === CODE_LENGTH;
-  const isGameOver = isWon || newGuesses.length >= MAX_ATTEMPTS;
+  const isWon = blackPegs === codeLength;
+  const isGameOver = isWon || newGuesses.length >= maxAttempts;
   
   return {
     ...state,

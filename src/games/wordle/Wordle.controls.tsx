@@ -1,6 +1,6 @@
 // Input handling for Wordle - no React UI, just control logic
 
-import { WordleState, addLetter, removeLetter, submitGuess } from './Wordle';
+import { WordleState, MAX_GUESSES, addLetter, removeLetter, submitGuess } from './Wordle';
 
 export function handleLetterInput(
   state: WordleState,
@@ -21,8 +21,9 @@ export function handleBackspace(
 
 export function handleSubmit(
   state: WordleState,
-  onStateChange: (newState: WordleState) => void
+  onStateChange: (newState: WordleState) => void,
+  maxGuesses: number = MAX_GUESSES
 ): void {
-  const newState = submitGuess(state);
+  const newState = submitGuess(state, maxGuesses);
   onStateChange(newState);
 }

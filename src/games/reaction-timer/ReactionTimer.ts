@@ -18,8 +18,8 @@ export function createInitialState(bestTime: number = Infinity): ReactionTimerSt
   };
 }
 
-export function getDelay(): number {
-  return 1500 + Math.random() * 3000;
+export function getDelay(timeMultiplier: number = 1): number {
+  return (1500 + Math.random() * 3000) * timeMultiplier;
 }
 
 export function calculateReactionTime(startTime: number): number {

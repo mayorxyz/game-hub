@@ -1,6 +1,6 @@
 // Input handling for Mastermind - no React UI, just control logic
 
-import { MastermindState, Color, addColorToGuess, removeColorFromGuess, submitGuess, clearCurrentGuess } from './Mastermind';
+import { MastermindState, Color, MAX_ATTEMPTS, addColorToGuess, removeColorFromGuess, submitGuess, clearCurrentGuess } from './Mastermind';
 
 export function handleColorSelect(
   state: MastermindState,
@@ -25,12 +25,13 @@ export function handleUndo(
 
 export function handleSubmit(
   state: MastermindState,
-  onStateChange: (newState: MastermindState) => void
+  onStateChange: (newState: MastermindState) => void,
+  maxAttempts: number = MAX_ATTEMPTS
 ): void {
   if (state.isGameOver) return;
-  if (state.currentGuess.length !== 4) return;
+  if (state.currentGuess.length !== state.secretCode.length) return;
   
-  const newState = submitGuess(state);
+  const newState = submitGuess(state, maxAttempts);
   onStateChange(newState);
 }
 

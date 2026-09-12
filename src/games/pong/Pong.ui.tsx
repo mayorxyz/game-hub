@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { playSound } from '../../lib/sound';
+import { useGameResult } from '../../hooks/useGameResult';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -8,6 +10,7 @@ import {
   PADDLE_HEIGHT,
   BALL_RADIUS,
   WIN_SCORE,
+  BOT_SPEED,
   GameState,
   createInitialState,
   updateBallPosition,
@@ -18,14 +21,28 @@ import {
   checkWinCondition,
 } from './Pong';
 import { useMouseControls, useTouchControls } from './Pong.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
+
+const BASE_BALL_SPEED = 4;
 
 export default function Pong() {
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  const ballSpeed = BASE_BALL_SPEED * difficultySettings.speedMultiplier;
+  const botSpeed = BOT_SPEED * difficultySettings.complexityMultiplier;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(ballSpeed));
   const [highScore, setHighScoreState] = useState(getHighScore('pong'));
+  const { record } = useGameResult('pong');
   const gameStateRef = useRef(gameState);
   const playerPaddleYRef = useRef(gameState.playerPaddle.y);
   const animationFrameRef = useRef<number>(0);
+  const ballSpeedRef = useRef(ballSpeed);
+  ballSpeedRef.current = ballSpeed;
+  const botSpeedRef = useRef(botSpeed);
+  botSpeedRef.current = botSpeed;
 
   // Keep refs in sync
   gameStateRef.current = gameState;
@@ -81,11 +98,12 @@ export default function Pong() {
         newBall = checkPaddleCollision(newBall, state.botPaddle.y, false);
         
         // Check scoring
-        const scoreResult = checkScoring(newBall, state.playerScore, state.botScore);
+        const scoreResult = checkScoring(newBall, state.playerScore, state.botScore, ballSpeedRef.current);
+        if (scoreResult.playerScore !== state.playerScore || scoreResult.botScore !== state.botScore) playSound('click');
         newBall = scoreResult.ball;
         
         // Update bot paddle
-        const newBotY = updateBotPaddle(state.botPaddle.y, newBall.y);
+        const newBotY = updateBotPaddle(state.botPaddle.y, newBall.y, botSpeedRef.current);
         
         // Check win condition
         const winResult = checkWinCondition(scoreResult.playerScore, scoreResult.botScore);
@@ -146,13 +164,19 @@ export default function Pong() {
     };
   }, []);
 
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: gameState.winner.includes('You win'), score: gameState.playerScore });
+    }
+  }, [gameState.isGameOver]);
+
   const reset = useCallback(() => {
-    const newState = createInitialState();
+    const newState = createInitialState(ballSpeed);
     newState.isRunning = true;
     setGameState(newState);
     gameStateRef.current = newState;
     playerPaddleYRef.current = newState.playerPaddle.y;
-  }, []);
+  }, [ballSpeed]);
 
   const start = useCallback(() => {
     setGameState(prev => ({ ...prev, isRunning: true }));
@@ -161,6 +185,7 @@ export default function Pong() {
   return (
     <GameLayout
       title="Pong"
+      showDifficulty
       score={`${gameState.playerScore} - ${gameState.botScore}`}
       highScore={highScore}
       onReset={reset}

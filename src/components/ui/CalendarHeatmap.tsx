@@ -40,13 +40,16 @@ export default function CalendarHeatmap() {
   // Get intensity level based on score
   const getIntensity = (entry?: DailyProgressEntry): number => {
     if (!entry) return 0;
-    if (entry.won) {
-      if (entry.score >= 1000) return 4;
-      if (entry.score >= 500) return 3;
-      if (entry.score >= 100) return 2;
-      return 1;
-    }
-    return 0;
+    if (!entry.won) return -1; // played but lost
+    if (entry.score >= 1000) return 4;
+    if (entry.score >= 500) return 3;
+    if (entry.score >= 100) return 2;
+    return 1;
+  };
+
+  const getColor = (intensity: number): string => {
+    if (intensity < 0) return 'bg-red-800'; // lost
+    return intensityColors[intensity];
   };
 
   const intensityColors = [
@@ -64,7 +67,7 @@ export default function CalendarHeatmap() {
           <div key={weekIndex} className="flex flex-col gap-1">
             {week.map((day) => {
               const intensity = getIntensity(day.entry);
-              const colorClass = intensityColors[intensity];
+              const colorClass = getColor(intensity);
               const tooltip = day.entry 
                 ? `${day.dateKey}: ${day.entry.won ? 'Won' : 'Lost'} (${day.entry.score} pts)`
                 : `${day.dateKey}: No activity`;
@@ -88,6 +91,8 @@ export default function CalendarHeatmap() {
           <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
         ))}
         <span>More</span>
+        <div className="w-3 h-3 rounded-sm bg-red-800 ml-2" />
+        <span>Lost</span>
       </div>
     </div>
   );

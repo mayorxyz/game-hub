@@ -4,6 +4,17 @@ export const GRID_SIZE = 10;
 export const SHIPS = [5, 4, 3, 3, 2];
 export const TOTAL_SHIP_CELLS = SHIPS.reduce((a, b) => a + b, 0);
 
+// Build a fleet of `count` ships; extra ships are added as 2-cell boats.
+export function getFleet(count: number): number[] {
+  const fleet = [...SHIPS];
+  while (fleet.length < count) fleet.push(2);
+  return fleet.slice(0, Math.max(1, count));
+}
+
+export function totalShipCells(ships: number[] = SHIPS): number {
+  return ships.reduce((a, b) => a + b, 0);
+}
+
 export type CellState = 'empty' | 'miss' | 'hit';
 export type Board = CellState[][];
 export type ShipPlacement = boolean[][];
@@ -23,9 +34,9 @@ export interface BattleshipConfig {
   ships: number[];
 }
 
-export function placeShips(): ShipPlacement {
+export function placeShips(ships: number[] = SHIPS): ShipPlacement {
   const grid: ShipPlacement = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
-  for (const size of SHIPS) {
+  for (const size of ships) {
     let placed = false;
     for (let attempt = 0; attempt < 100 && !placed; attempt++) {
       const horizontal = Math.random() > 0.5;
@@ -54,10 +65,10 @@ export function emptyBoard(): Board {
   return Array.from({ length: GRID_SIZE }, () => Array<CellState>(GRID_SIZE).fill('empty'));
 }
 
-export function botGuess(board: Board): [number, number] {
+export function botGuess(board: Board, ships: number[] = SHIPS): [number, number] {
   // Probability density targeting
   const prob: number[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-  for (const size of SHIPS) {
+  for (const size of ships) {
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
         // Horizontal placements
@@ -105,10 +116,10 @@ export function botGuess(board: Board): [number, number] {
   return bestMoves[Math.floor(Math.random() * bestMoves.length)];
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(ships: number[] = SHIPS): GameState {
   return {
-    playerShips: placeShips(),
-    botShips: placeShips(),
+    playerShips: placeShips(ships),
+    botShips: placeShips(ships),
     playerBoard: emptyBoard(),
     botBoard: emptyBoard(),
     isPlayerTurn: true,

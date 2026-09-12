@@ -31,7 +31,7 @@ export function getRandomWord(): string {
   return WORDS[Math.floor(Math.random() * WORDS.length)];
 }
 
-export function guessLetter(state: HangmanState, letter: string): HangmanState {
+export function guessLetter(state: HangmanState, letter: string, maxWrong: number = MAX_WRONG_GUESSES): HangmanState {
   if (state.isWon || state.isLost || state.guessedLetters.has(letter)) {
     return state;
   }
@@ -43,7 +43,7 @@ export function guessLetter(state: HangmanState, letter: string): HangmanState {
   const newWrongGuesses = isCorrect ? state.wrongGuesses : state.wrongGuesses + 1;
   
   const isWon = state.word.split('').every(l => newGuessed.has(l));
-  const isLost = newWrongGuesses >= MAX_WRONG_GUESSES;
+  const isLost = newWrongGuesses >= maxWrong;
   
   let newStreak = state.streak;
   if (isWon) {

@@ -132,7 +132,7 @@ export function minimax(
   }
 }
 
-export function getBestMove(state: MancalaState): number {
+export function getBestMove(state: MancalaState, depth: number = 4): number {
   const moves: number[] = [];
   for (let i = 0; i < 6; i++) {
     if (state.pits[7 + i] > 0) moves.push(7 + i);
@@ -141,7 +141,7 @@ export function getBestMove(state: MancalaState): number {
   let bestMove = moves[0];
   for (const pit of moves) {
     const { state: ns } = sow(state, pit);
-    const score = minimax(ns, 4, -Infinity, Infinity, false, 2, 1);
+    const score = minimax(ns, depth, -Infinity, Infinity, false, 2, 1);
     if (score > bestScore) {
       bestScore = score;
       bestMove = pit;

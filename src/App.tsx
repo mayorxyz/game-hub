@@ -1,5 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { getSettings, DATA_CHANGE_EVENT } from './lib/persistence';
 import AppShell from './components/app/AppShell';
 import Home from './features/home/Home';
 import Library from './features/library/Library';
@@ -10,6 +11,7 @@ import Favorites from './features/favorites/Favorites';
 import Leaderboard from './features/leaderboard/Leaderboard';
 import Settings from './features/settings/Settings';
 import Daily from './features/daily/Daily';
+import AchievementToast from './components/ui/AchievementToast';
 import Achievements from './features/achievements/Achievements';
 
 function LoadingFallback() {
@@ -24,6 +26,18 @@ function LoadingFallback() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const apply = () => {
+      const s = getSettings();
+      const root = document.documentElement;
+      root.setAttribute('data-reduced-motion', s.reducedMotion ? 'true' : 'false');
+      root.classList.toggle('colorblind', !!s.colorblind);
+    };
+    apply();
+    window.addEventListener(DATA_CHANGE_EVENT, apply);
+    return () => window.removeEventListener(DATA_CHANGE_EVENT, apply);
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense fallback={<LoadingFallback />}>
@@ -40,6 +54,7 @@ export default function App() {
           <Route path="/achievements" element={<AppShell><Achievements /></AppShell>} />
         </Routes>
       </Suspense>
+      <AchievementToast />
     </BrowserRouter>
   );
 }

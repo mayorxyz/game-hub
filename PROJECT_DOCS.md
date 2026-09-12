@@ -1,7 +1,7 @@
 # Game Hub — System Architecture & Component Dossier
 
-**Version:** 1.0  
-**Last Updated:** 2024  
+**Version:** 2.0  
+**Last Updated:** 2026  
 **Purpose:** Developer reference manual for navigation, understanding, and customization
 
 ---
@@ -10,109 +10,77 @@
 
 ```
 src/
-├── App.tsx                              # Main router with lazy-loaded routes
-├── main.tsx                             # React entry point
-├── index.css                            # Global styles, Tailwind imports, theme variables
-│
+├── App.tsx                       # Router (lazy-loaded routes) + appearance settings
+├── main.tsx                      # React entry point (+ service-worker registration)
+├── index.css                     # Tailwind import, reduced-motion + colorblind rules
 ├── components/
-│   ├── app/
-│   │   └── AppShell.tsx                 # Application shell with navigation
-│   ├── game/
-│   │   └── GameArtwork.tsx              # CSS-based game thumbnail generator
+│   ├── app/AppShell.tsx          # Navigation shell (desktop + mobile menu)
+│   ├── game/GameArtwork.tsx      # CSS-based game thumbnails
 │   └── ui/
-│       ├── Button.tsx                   # Reusable button component
-│       ├── GameCard.tsx                 # Game card for library/home display
-│       ├── GameLayout.tsx               # Default game HUD wrapper
-│       ├── Modal.tsx                    # Modal dialog component
-│       └── controls/
-│           ├── VirtualDPad.tsx          # 4-way directional touch control
-│           ├── TouchActionButton.tsx    # Touch-optimized action button
-│           └── TouchControlContainer.tsx # Mobile-only touch control wrapper
-│
-├── data/
-│   └── games.ts                         # Game registry (30 games)
-│
-├── features/
-│   ├── favorites/
-│   │   └── Favorites.tsx                # Favorites management page
-│   ├── game-preview/
-│   │   └── GamePreview.tsx              # Game info/preview page
-│   ├── game-session/
-│   │   └── GameSession.tsx              # Game session shell (100dvh viewport)
-│   ├── history/
-│   │   └── History.tsx                  # Recently played games page
-│   ├── home/
-│   │   └── Home.tsx                     # Home page with featured games
-│   ├── leaderboard/
-│   │   └── Leaderboard.tsx              # High scores leaderboard
-│   ├── library/
-│   │   └── Library.tsx                  # Game library browser
-│   └── settings/
-│       └── Settings.tsx                 # Settings page
-│
-├── games/                               # 30 individual game implementations
-│   ├── aim-trainer/AimTrainer.tsx
-│   ├── battleship/Battleship.tsx
-│   ├── blackjack/Blackjack.tsx
-│   ├── breakout/Breakout.tsx
-│   ├── checkers/Checkers.tsx
-│   ├── connect-four/ConnectFour.tsx
-│   ├── fifteen-puzzle/FifteenPuzzle.tsx
-│   ├── flappy-bird/FlappyBird.tsx
-│   ├── game-2048/Game2048.tsx
-│   ├── gomoku/Gomoku.tsx
-│   ├── hangman/Hangman.tsx
-│   ├── idle-clicker/IdleClicker.tsx
-│   ├── lights-out/LightsOut.tsx
-│   ├── mancala/Mancala.tsx
-│   ├── memory-match/MemoryMatch.tsx
-│   ├── minesweeper/Minesweeper.tsx
-│   ├── pong/Pong.tsx
-│   ├── reaction-timer/ReactionTimer.tsx
-│   ├── reversi/Reversi.tsx
-│   ├── rock-paper-scissors/RockPaperScissors.tsx
-│   ├── simon-says/SimonSays.tsx
-│   ├── snake/Snake.tsx
-│   ├── sokoban/Sokoban.tsx
-│   ├── solitaire/Solitaire.tsx
-│   ├── sudoku/Sudoku.tsx
-│   ├── tic-tac-toe/TicTacToe.tsx
-│   ├── typing-game/TypingGame.tsx
-│   ├── whack-a-mole/WhackAMole.tsx
-│   ├── word-search/WordSearch.tsx
-│   └── wordle/Wordle.tsx
-│
+│       ├── AchievementToast.tsx  # Achievement unlock toast
+│       ├── Button.tsx
+│       ├── CalendarHeatmap.tsx   # Daily-progress heatmap
+│       ├── DifficultySelector.tsx
+│       ├── GameCard.tsx
+│       ├── GameLayout.tsx        # Game HUD (+ optional difficulty selector)
+│       ├── Modal.tsx             # Accessible dialog (focus trap + Escape)
+│       ├── PassDeviceOverlay.tsx # Hotseat pass-the-device screen
+│       └── controls/             # VirtualDPad, TouchActionButton, TouchControlContainer
+├── data/games.ts                 # Game registry (34 games)
+├── features/                     # Pages: home, library, game-preview, game-session,
+│                                 #   history, favorites, leaderboard, achievements, daily, settings
+├── games/                        # 34 games, each modular:
+│   └── <game>/
+│       ├── <Game>.ts             # Pure logic (no React)
+│       ├── <Game>.controls.tsx   # Input handling
+│       ├── <Game>.ui.tsx         # React view
+│       └── index.ts              # Barrel export
 ├── hooks/
-│   └── useSettings.ts                   # Theme/settings hook
-│
+│   ├── useAchievements.ts        # Unlocked achievements
+│   ├── useDifficulty.ts          # Difficulty (synced across components)
+│   ├── useGameResult.ts          # Records finished games
+│   ├── useGameStatePersistence.ts# Save / resume
+│   ├── useGridKeyNav.ts          # Arrow-key grid navigation (a11y)
+│   ├── useSettings.ts            # Theme / settings
+│   ├── useSound.ts               # Sound-effect helper
+│   └── useStats.ts               # Lifetime stats
 ├── lib/
-│   ├── persistence.ts                   # Centralized persistence layer
-│   └── storage.ts                       # Legacy storage wrapper
-│
-└── types/
-    └── game.ts                          # TypeScript type definitions
+│   ├── achievements.ts           # Achievement definitions + unlock checks
+│   ├── daily.ts                  # Daily challenge, progress, streaks
+│   ├── difficulty.ts             # Difficulty presets / multipliers
+│   ├── gameResult.ts             # finishGame(): stats + daily + achievements (+ end sound)
+│   ├── persistence.ts            # Versioned localStorage layer (gamehub_* keys)
+│   ├── random.ts                 # Seeded RNG (mulberry32) + date keys
+│   ├── sound.ts                  # Zero-dependency WebAudio engine
+│   └── storage.ts                # Low-level storage wrapper
+└── types/game.ts                 # GameDefinition + shared types
+
+public/
+├── icon.svg · icon-192.png · icon-512.png · icon-512-maskable.png
+├── manifest.webmanifest          # PWA manifest
+└── sw.js                         # Service worker (offline shell)
 ```
 
 ### Key Folder Responsibilities
 
 | Folder | Responsibility |
 |--------|----------------|
-| `components/ui/` | Reusable UI components (buttons, cards, layouts) |
-| `components/ui/controls/` | Touch control primitives for mobile |
-| `data/` | Game registry and metadata |
-| `features/` | Feature-specific pages (home, library, settings) |
-| `games/` | Individual game implementations (30 games) |
+| `components/ui/` | Reusable UI (layout, modal, difficulty selector, overlays) |
+| `components/ui/controls/` | Touch-control primitives for mobile |
+| `data/` | Game registry and metadata (34 games) |
+| `features/` | Feature pages (home, library, settings, daily, achievements, …) |
+| `games/` | 34 games as `<Game>.ts` + `.controls.tsx` + `.ui.tsx` + `index.ts` |
 | `hooks/` | Custom React hooks |
-| `lib/` | Utility libraries (persistence, storage) |
+| `lib/` | Utility libraries (persistence, sound, difficulty, daily, random) |
+| `public/` | PWA manifest, icons, service worker |
 | `types/` | TypeScript type definitions |
-
 ---
 
 ## 2. CORE INFRASTRUCTURE & DATA FLOW
 
 ### 2.1 Game Registry (`src/data/games.ts`)
 
-**Purpose:** Central registry of all 30 games with metadata
+**Purpose:** Central registry of all 34 games with metadata
 
 **Structure:**
 ```typescript
@@ -242,6 +210,22 @@ User sees: Game fully rendered and playable
 
 ---
 
+### 2.4 Shared subsystems
+
+| Module | Purpose |
+|--------|---------|
+| `lib/sound.ts` | Zero-dependency WebAudio engine (`click` · `move` · `success` · `gameover` · `highscore` · `tick`, plus `playTone`). Respects the Sound setting; lazily creates the AudioContext. |
+| `lib/difficulty.ts` | `easy`/`medium`/`hard` presets exposing `time`/`speed`/`size`/`complexity`/`score` multipliers. `useDifficulty()` keeps every consumer in sync. |
+| `lib/daily.ts` | Deterministic daily puzzles (`getDailySeed`), progress, current/longest streaks. |
+| `lib/achievements.ts` | Achievement definitions + `checkAndUnlockAchievements()` (dispatches a `gamehub:achievements` event on unlock). |
+| `lib/gameResult.ts` | `finishGame()` — the single entry point that records stats, daily progress, and achievements, and plays the end-of-game sound. |
+| `hooks/useGameStatePersistence.ts` | Save/resume: `loadSavedState` + `useGameStatePersistence` (writes every 2 s, on `pagehide`, and on unmount; clears when the game finishes). |
+| `hooks/useGridKeyNav.ts` | Arrow-key focus navigation between grid cell buttons, keeping Left/Right within a row. |
+| `data/games.ts` | Registry of all 34 games (metadata + lazy `component`). |
+| PWA | `public/manifest.webmanifest`, `public/sw.js` (offline shell), icons; registered in `main.tsx`. |
+| Accessibility | Accessible `Modal` (focus trap + Escape), reduced-motion (setting + CSS), colorblind palette (`html.colorblind`), `aria-label`s. |
+
+---
 ## 3. LAYOUT SHELL & TOUCH SYSTEM
 
 ### 3.1 GameSession (`src/features/game-session/GameSession.tsx`)
@@ -333,7 +317,7 @@ interface GameLayoutProps {
 }
 ```
 
-**Usage:** 29/30 games use GameLayout (all except custom layouts)
+**Usage:** 29/34 games use GameLayout (all except custom layouts)
 
 ### 3.3 Touch Primitives (`src/components/ui/controls/`)
 
@@ -437,53 +421,49 @@ interface TouchActionButtonProps {
 
 ---
 
-## 4. 30-GAME MATRIX CATALOG
+## 4. GAME CATALOG (34 GAMES)
 
-### Canvas/Arcade Games (10)
+Every game is modular — `src/games/<slug>/<Game>.ts` (pure logic) + `<Game>.controls.tsx` (input) + `<Game>.ui.tsx` (view) + `index.ts`.
+All 34 games support **difficulty** and **sound**; the table also flags **save/resume** and **hotseat** support.
 
-| Game | File Path | Uses GameLayout | Rendering | Styling | Input |
-|------|-----------|----------------|-----------|---------|-------|
-| Snake | `src/games/snake/Snake.tsx` | Yes | CSS Grid | Tailwind | Keyboard, Virtual D-Pad |
-| Breakout | `src/games/breakout/Breakout.tsx` | Yes | HTML5 Canvas | Tailwind | Mouse, Touch |
-| Flappy Bird | `src/games/flappy-bird/FlappyBird.tsx` | Yes | HTML5 Canvas | Tailwind | Keyboard, Touch |
-| Pong | `src/games/pong/Pong.tsx` | Yes | HTML5 Canvas | Tailwind | Mouse, Touch |
-| Aim Trainer | `src/games/aim-trainer/AimTrainer.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
-| Whack-a-Mole | `src/games/whack-a-mole/WhackAMole.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
-| 15 Puzzle | `src/games/fifteen-puzzle/FifteenPuzzle.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Sokoban | `src/games/sokoban/Sokoban.tsx` | Yes | CSS Grid | Tailwind | Keyboard, Virtual D-Pad |
-| Lights Out | `src/games/lights-out/LightsOut.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Reaction Timer | `src/games/reaction-timer/ReactionTimer.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
+| Game | Folder | Category | Save/Resume | Hotseat |
+|------|--------|----------|:-----------:|:-------:|
+| Snake | `snake/` | arcade | — | — |
+| Breakout | `breakout/` | arcade | — | — |
+| Flappy Bird | `flappy-bird/` | arcade | — | — |
+| Pong | `pong/` | arcade | — | — |
+| Tetris | `tetris/` | arcade | ✅ | — |
+| Aim Trainer | `aim-trainer/` | arcade | — | — |
+| Whack-a-Mole | `whack-a-mole/` | arcade | — | — |
+| Reaction Timer | `reaction-timer/` | arcade | — | — |
+| Typing Game | `typing-game/` | arcade | — | — |
+| Idle Clicker | `idle-clicker/` | arcade | ✅ | — |
+| 2048 | `game-2048/` | puzzle | ✅ | — |
+| Minesweeper | `minesweeper/` | puzzle | ✅ | — |
+| Sudoku | `sudoku/` | puzzle | ✅ | — |
+| Lights Out | `lights-out/` | puzzle | ✅ | — |
+| 15 Puzzle | `fifteen-puzzle/` | puzzle | ✅ | — |
+| Sokoban | `sokoban/` | puzzle | ✅ | — |
+| Mastermind | `mastermind/` | puzzle | ✅ | — |
+| Memory Match | `memory-match/` | puzzle | ✅ | — |
+| Word Search | `word-search/` | word | ✅ | — |
+| Hangman | `hangman/` | word | ✅ | — |
+| Wordle | `wordle/` | word | ✅ | — |
+| Tic-Tac-Toe | `tic-tac-toe/` | board | ✅ | — |
+| Connect Four | `connect-four/` | board | ✅ | ✅ |
+| Gomoku | `gomoku/` | board | ✅ | — |
+| Reversi | `reversi/` | board | ✅ | ✅ |
+| Checkers | `checkers/` | board | ✅ | ✅ |
+| Battleship | `battleship/` | board | ✅ | ✅ |
+| Dots & Boxes | `dots-and-boxes/` | board | ✅ | — |
+| Mancala | `mancala/` | board | ✅ | — |
+| Solitaire | `solitaire/` | card | ✅ | — |
+| Blackjack | `blackjack/` | card | — | — |
+| Rock Paper Scissors | `rock-paper-scissors/` | classic | — | — |
+| Simon Says | `simon-says/` | memory | — | — |
+| Yahtzee | `yahtzee/` | classic | ✅ | — |
 
-### Grid/Board Games (10)
-
-| Game | File Path | Uses GameLayout | Rendering | Styling | Input |
-|------|-----------|----------------|-----------|---------|-------|
-| 2048 | `src/games/game-2048/Game2048.tsx` | Yes | CSS Grid | Tailwind | Keyboard, Touch Swipe |
-| Minesweeper | `src/games/minesweeper/Minesweeper.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Sudoku | `src/games/sudoku/Sudoku.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Tic-Tac-Toe | `src/games/tic-tac-toe/TicTacToe.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Connect Four | `src/games/connect-four/ConnectFour.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Memory Match | `src/games/memory-match/MemoryMatch.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Reversi | `src/games/reversi/Reversi.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Gomoku | `src/games/gomoku/Gomoku.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Checkers | `src/games/checkers/Checkers.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Battleship | `src/games/battleship/Battleship.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-
-### Card/Word/Turn-Based Games (10)
-
-| Game | File Path | Uses GameLayout | Rendering | Styling | Input |
-|------|-----------|----------------|-----------|---------|-------|
-| Hangman | `src/games/hangman/Hangman.tsx` | Yes | React Flex/DOM | Tailwind | Keyboard, Touch Buttons |
-| Wordle | `src/games/wordle/Wordle.tsx` | Yes | React Flex/DOM | Tailwind | Keyboard, Touch Buttons |
-| Word Search | `src/games/word-search/WordSearch.tsx` | Yes | CSS Grid | Tailwind | Mouse, Touch |
-| Typing Game | `src/games/typing-game/TypingGame.tsx` | Yes | React Flex/DOM | Tailwind | Keyboard |
-| Idle Clicker | `src/games/idle-clicker/IdleClicker.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
-| Rock Paper Scissors | `src/games/rock-paper-scissors/RockPaperScissors.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch Buttons |
-| Mancala | `src/games/mancala/Mancala.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
-| Blackjack | `src/games/blackjack/Blackjack.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch Buttons |
-| Solitaire | `src/games/solitaire/Solitaire.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch |
-| Simon Says | `src/games/simon-says/SimonSays.tsx` | Yes | React Flex/DOM | Tailwind | Mouse, Touch Buttons |
-
+> **Hotseat** games also offer a vs-bot mode; **save/resume** games auto-save every 2 s (plus on page hide) and auto-clear once finished.
 ---
 
 ## 5. UNIVERSAL STYLING & DESIGN SYSTEM
@@ -689,41 +669,43 @@ Display in UI
 
 ### 7.1 Adding a New Game
 
-1. **Create game folder:**
+1. **Create the game folder** (four files):
    ```
-   src/games/my-game/MyGame.tsx
+   src/games/my-game/
+     MyGame.ts            # pure logic (no React)
+     MyGame.controls.tsx  # input handling
+     MyGame.ui.tsx        # React view
+     index.ts             # export { default } from "./MyGame.ui"; export * from "./MyGame";
    ```
 
-2. **Implement game component:**
+2. **Implement the view** (`.ui.tsx`):
    ```tsx
    import GameLayout from '../../components/ui/GameLayout';
    import { getHighScore, setHighScore } from '../../lib/persistence';
-   
+   import { useGameResult } from '../../hooks/useGameResult';
+
    export default function MyGame() {
-     const [score, setScore] = useState(0);
+     const [gameState, setGameState] = useState(createInitialState());
      const [highScore, setHighScoreState] = useState(getHighScore('my-game'));
-     
-     const reset = () => { /* reset logic */ };
-     
+     const { record } = useGameResult('my-game');
+
+     useEffect(() => {
+       if (gameState.isGameOver) {
+         record({ won: gameState.isWon, score: gameState.score });
+       }
+     }, [gameState.isGameOver]);
+
      return (
-       <GameLayout title="My Game" score={score} highScore={highScore} onReset={reset}>
-         {/* Game content */}
+       <GameLayout title="My Game" showDifficulty score={gameState.score} highScore={highScore} onReset={reset}>
+         {/* board */}
        </GameLayout>
      );
    }
    ```
 
-3. **Register in games.ts:**
-   ```typescript
-   {
-     id: 'my-game',
-     name: 'My Game',
-     slug: 'my-game',
-     // ... other metadata
-     component: lazy(() => import('../games/my-game/MyGame')),
-   }
-   ```
+3. **Register it** in `src/data/games.ts` (add a `GameDefinition` object with `component: lazy(() => import('../games/my-game'))`).
 
+4. **Optional capabilities:** add `useSound()` for effects, `useGameStatePersistence()` for save/resume, `useDifficulty()` for difficulty-scaled mechanics, and `useGridKeyNav()` for arrow-key grid navigation.
 ### 7.2 Modifying Game Styling
 
 **Change button colors:**

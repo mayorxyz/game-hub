@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
+import { playTone } from '../../lib/sound';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 import {
   GameState,
   COLORS,
@@ -28,12 +33,33 @@ const ACTIVE_STYLES: Record<string, string> = {
   yellow: 'bg-yellow-400 shadow-lg shadow-yellow-400/50',
 };
 
+const COLOR_TONES: Record<string, number> = {
+  red: 329.63,
+  blue: 440,
+  green: 261.63,
+  yellow: 392,
+};
+
 export default function SimonSays() {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('simon-says'));
+  const { record } = useGameResult('simon-says');
+  const play = useSound();
+  const { difficulty } = useDifficulty();
+  const timeMultiplier = getDifficultySettings(difficulty).timeMultiplier;
+  const seqDelay = Math.round(SEQUENCE_DELAY * timeMultiplier);
+  const activeDuration = Math.round(ACTIVE_DURATION * timeMultiplier);
+  const nextSequenceDelay = Math.round(NEXT_SEQUENCE_DELAY * timeMultiplier);
+  const playerActiveDuration = Math.round(PLAYER_ACTIVE_DURATION * timeMultiplier);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // Clear all timeouts
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
+
   const clearAllTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
     timeoutsRef.current = [];
@@ -47,18 +73,19 @@ export default function SimonSays() {
     seq.forEach((color, i) => {
       const showTimeout = setTimeout(() => {
         setGameState(prev => ({ ...prev, activeColor: color }));
-      }, i * SEQUENCE_DELAY);
+        playTone(COLOR_TONES[color] ?? 440, 0.18, 'square');
+      }, i * seqDelay);
       
       const hideTimeout = setTimeout(() => {
         setGameState(prev => ({ ...prev, activeColor: null }));
-      }, i * SEQUENCE_DELAY + ACTIVE_DURATION);
+      }, i * seqDelay + activeDuration);
 
       timeoutsRef.current.push(showTimeout, hideTimeout);
     });
 
     const endTimeout = setTimeout(() => {
       setGameState(prev => ({ ...prev, isShowing: false, playerIdx: 0 }));
-    }, seq.length * SEQUENCE_DELAY);
+    }, seq.length * seqDelay);
 
     timeoutsRef.current.push(endTimeout);
   }, [clearAllTimeouts]);
@@ -84,10 +111,11 @@ export default function SimonSays() {
   // Handle color press
   const onActivate = useCallback((color: string) => {
     setGameState(prev => ({ ...prev, activeColor: color }));
+        playTone(COLOR_TONES[color] ?? 440, 0.18, 'square');
     
     const deactivateTimeout = setTimeout(() => {
       setGameState(prev => ({ ...prev, activeColor: null }));
-    }, PLAYER_ACTIVE_DURATION);
+    }, playerActiveDuration);
     timeoutsRef.current.push(deactivateTimeout);
 
     const { correct, roundComplete } = checkPlayerInput(
@@ -105,10 +133,11 @@ export default function SimonSays() {
           return best;
         });
         
+        play('success');
         const nextSequence = generateNextSequence(gameState.sequence);
         setGameState(prev => ({ ...prev, score: newScore, sequence: nextSequence }));
         
-        const nextTimeout = setTimeout(() => showSequence(nextSequence), NEXT_SEQUENCE_DELAY);
+        const nextTimeout = setTimeout(() => showSequence(nextSequence), nextSequenceDelay);
         timeoutsRef.current.push(nextTimeout);
       } else {
         setGameState(prev => ({ ...prev, playerIdx: prev.playerIdx + 1 }));
@@ -136,6 +165,7 @@ export default function SimonSays() {
   return (
     <GameLayout
       title="Simon Says"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={start}

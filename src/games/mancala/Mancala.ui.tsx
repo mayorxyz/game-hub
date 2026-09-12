@@ -1,6 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   MancalaState,
   createInitialState,
@@ -10,14 +13,25 @@ import {
   getBestMove,
 } from './Mancala';
 import { handlePitClick } from './Mancala.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+
+const BASE_BOT_DEPTH = 4;
 
 export default function Mancala() {
-  const [state, setState] = useState<MancalaState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  // Deeper search = stronger bot (clamped to keep the bot's move fast).
+  const botDepth = Math.min(5, Math.max(2, applyDifficulty(BASE_BOT_DEPTH, getDifficultySettings(difficulty), 'complexity')));
+
+  const [state, setState] = useState<MancalaState>(() => loadSavedState<MancalaState>('mancala', d => d as MancalaState) ?? createInitialState());
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [gameOver, setGameOver] = useState(false);
   const [result, setResult] = useState('');
   const [wins, setWins] = useState(0);
   const [highScore, setHighScoreState] = useState(getHighScore('mancala'));
+  const { record } = useGameResult('mancala');
+  useGameStatePersistence("mancala", state, s => s, () => true);
+  const play = useSound();
 
   const onMove = useCallback((newState: MancalaState, extraTurn: boolean) => {
     setState(newState);
@@ -45,7 +59,7 @@ export default function Mancala() {
 
     setIsPlayerTurn(false);
     setTimeout(() => {
-      const move = getBestMove(newState);
+      const move = getBestMove(newState, botDepth);
       const { state: ns2, extraTurn: botExtraTurn } = sow(newState, move);
       setState(ns2);
       if (isGameOver(ns2)) {
@@ -66,7 +80,7 @@ export default function Mancala() {
       }
       if (botExtraTurn) {
         setTimeout(() => {
-          const move2 = getBestMove(ns2);
+          const move2 = getBestMove(ns2, botDepth);
           const { state: ns3 } = sow(ns2, move2);
           setState(ns3);
           if (isGameOver(ns3)) {
@@ -91,13 +105,21 @@ export default function Mancala() {
         setIsPlayerTurn(true);
       }
     }, 500);
-  }, [wins]);
+  }, [wins, botDepth]);
 
   const onPitClick = useCallback((pit: number) => {
+    play('move');
     handlePitClick(state, pit, isPlayerTurn, gameOver, onMove);
   }, [state, isPlayerTurn, gameOver, onMove]);
 
+    useEffect(() => {
+    if (gameOver) {
+      record({ won: result.includes('You win'), score: wins });
+    }
+  }, [gameOver]);
+
   const onReset = useCallback(() => {
+    clearSavedState('mancala');
     setState(createInitialState());
     setIsPlayerTurn(true);
     setGameOver(false);
@@ -107,6 +129,7 @@ export default function Mancala() {
   return (
     <GameLayout
       title="Mancala"
+      showDifficulty
       score={`You: ${state.pits[6]} · Bot: ${state.pits[13]}`}
       highScore={highScore}
       onReset={onReset}

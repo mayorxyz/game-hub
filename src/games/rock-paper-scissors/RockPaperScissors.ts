@@ -24,8 +24,11 @@ export function createInitialState(): GameState {
   };
 }
 
-export function botChoice(history: { player: Choice; bot: Choice }[]): Choice {
+// `predictionChance` is how often the bot counters your most frequent choice
+// instead of throwing a random one.
+export function botChoice(history: { player: Choice; bot: Choice }[], predictionChance: number = 1): Choice {
   if (history.length < 3) return CHOICES[Math.floor(Math.random() * 3)];
+  if (Math.random() > predictionChance) return CHOICES[Math.floor(Math.random() * 3)];
   const counts: Record<Choice, number> = { rock: 0, paper: 0, scissors: 0 };
   history.forEach(h => counts[h.player]++);
   const predicted = (Object.entries(counts) as [Choice, number][]).sort((a, b) => b[1] - a[1])[0][0];

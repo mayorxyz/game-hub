@@ -1,6 +1,7 @@
 // Pure game logic - no React, no UI, no input handling
+import { mulberry32 } from '../../lib/random';
 
-export const EMOJIS = ['🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎸', '🎺'];
+export const EMOJIS = ['🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎸', '🎺', '🃏', '🎰'];
 
 export interface Card {
   id: number;
@@ -20,10 +21,15 @@ export interface MemoryMatchConfig {
   pairs: number;
 }
 
-export function createCards(): Card[] {
-  return [...EMOJIS, ...EMOJIS]
-    .sort(() => Math.random() - 0.5)
-    .map((e, i) => ({ id: i, emoji: e, flipped: false, matched: false }));
+export function createCards(seed?: number, pairs: number = EMOJIS.length): Card[] {
+  const rng = seed !== undefined ? mulberry32(seed) : Math.random;
+  const pool = EMOJIS.slice(0, Math.max(2, Math.min(pairs, EMOJIS.length)));
+  const arr = [...pool, ...pool];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.map((e, i) => ({ id: i, emoji: e, flipped: false, matched: false }));
 }
 
 export function checkMatch(cards: Card[], idx1: number, idx2: number): boolean {
@@ -46,8 +52,8 @@ export function checkAllMatched(cards: Card[]): boolean {
   return cards.every(c => c.matched);
 }
 
-export function createInitialState(): GameState {
-  const cards = createCards();
+export function createInitialState(seed?: number, pairs: number = EMOJIS.length): GameState {
+  const cards = createCards(seed, pairs);
   return {
     cards,
     selected: [],

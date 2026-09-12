@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   Board,
   BOARD_SIZE,
@@ -11,10 +14,19 @@ import {
   makeMove,
 } from './Gomoku';
 import { handleCellClick } from './Gomoku.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
 
 export default function Gomoku() {
-  const [gameState, setGameState] = useState<GomokuState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  // Easy: the bot sometimes plays a random move. Hard: it searches a wider area.
+  const botSkill = difficulty === 'easy' ? 0.5 : 1;
+  const botRadius = difficulty === 'hard' ? 3 : 2;
+
+  const [gameState, setGameState] = useState<GomokuState>(() => loadSavedState<GomokuState>('gomoku', d => d as GomokuState) ?? createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('gomoku'));
+  const { record } = useGameResult('gomoku');
+  useGameStatePersistence("gomoku", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
 
   const onMove = useCallback((newBoard: Board) => {
     setGameState(prev => ({ ...prev, board: newBoard }));
@@ -38,7 +50,7 @@ export default function Gomoku() {
     setGameState(prev => ({ ...prev, isPlayerTurn: false }));
 
     setTimeout(() => {
-      const [br, bc] = getBestMove(newBoard);
+      const [br, bc] = getBestMove(newBoard, botSkill, botRadius);
       const botBoard = makeMove(newBoard, br, bc, 2);
       setGameState(prev => ({ ...prev, board: botBoard }));
 
@@ -51,9 +63,10 @@ export default function Gomoku() {
       }
       setGameState(prev => ({ ...prev, isPlayerTurn: true }));
     }, 300);
-  }, [gameState.wins]);
+  }, [gameState.wins, botSkill, botRadius]);
 
   const onCellClick = useCallback((row: number, col: number) => {
+    play('click');
     handleCellClick(
       gameState.board,
       row,
@@ -64,13 +77,21 @@ export default function Gomoku() {
     );
   }, [gameState.board, gameState.isPlayerTurn, gameState.isGameOver, onMove]);
 
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: gameState.result.includes('You win'), score: gameState.wins });
+    }
+  }, [gameState.isGameOver]);
+
   const reset = useCallback(() => {
+    clearSavedState('gomoku');
     setGameState(createInitialState());
   }, []);
 
   return (
     <GameLayout
       title="Gomoku"
+      showDifficulty
       score={`Wins: ${gameState.wins}`}
       highScore={highScore}
       onReset={reset}

@@ -1,6 +1,8 @@
 // Pure game logic - no React, no UI, no input handling
+import { mulberry32 } from '../../lib/random';
 
 export const BOARD_SIZE = 4;
+export const INITIAL_TILES = 2;
 
 export type Board = number[][];
 
@@ -18,13 +20,13 @@ export function createBoard(): Board {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-export function addRandom(board: Board): Board {
+export function addRandom(board: Board, rng: () => number = Math.random): Board {
   const empty: [number, number][] = [];
   board.forEach((row, r) => row.forEach((v, c) => v === 0 && empty.push([r, c])));
   if (empty.length === 0) return board;
-  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  const [r, c] = empty[Math.floor(rng() * empty.length)];
   const nb = board.map(row => [...row]);
-  nb[r][c] = Math.random() < 0.9 ? 2 : 4;
+  nb[r][c] = rng() < 0.9 ? 2 : 4;
   return nb;
 }
 
@@ -106,8 +108,12 @@ export function hasValidMoves(board: Board): boolean {
   return false;
 }
 
-export function createInitialState(): GameState {
-  const board = addRandom(addRandom(createBoard()));
+export function createInitialState(seed?: number, initialTiles: number = INITIAL_TILES): GameState {
+  const rng = seed !== undefined ? mulberry32(seed) : Math.random;
+  let board = createBoard();
+  for (let i = 0; i < initialTiles; i++) {
+    board = addRandom(board, rng);
+  }
   return {
     board,
     score: 0,

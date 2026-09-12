@@ -24,11 +24,11 @@ export interface IdleClickerState {
   clickPower: number;
 }
 
-export function createInitialState(): IdleClickerState {
+export function createInitialState(costMultiplier: number = 1, clickPower: number = 1): IdleClickerState {
   return {
     coins: 0,
-    upgrades: INIT_UPGRADES.map(u => ({ ...u })),
-    clickPower: 1,
+    upgrades: INIT_UPGRADES.map(u => ({ ...u, cost: Math.round(u.cost * costMultiplier) })),
+    clickPower,
   };
 }
 
@@ -60,6 +60,6 @@ export function buyUpgrade(state: IdleClickerState, idx: number): IdleClickerSta
   };
 }
 
-export function resetGame(): IdleClickerState {
-  return createInitialState();
+export function resetGame(costMultiplier: number = 1, clickPower: number = 1): IdleClickerState {
+  return createInitialState(costMultiplier, clickPower);
 }

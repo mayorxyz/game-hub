@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
 import {
   Target,
   GameState,
@@ -15,10 +17,20 @@ import {
   decrementTime,
 } from './AimTrainer';
 import { handleTargetClick, handleMissClick } from './AimTrainer.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
 export default function AimTrainer() {
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  const timeLimit = applyDifficulty(TIME_LIMIT, difficultySettings, 'time');
+  const spawnInterval = Math.round(SPAWN_INTERVAL / difficultySettings.speedMultiplier);
+  const pointsPerHit = Math.max(1, applyDifficulty(1, difficultySettings, 'score'));
+
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(timeLimit));
   const [highScore, setHighScoreState] = useState(getHighScore('aim-trainer'));
+  const { record } = useGameResult('aim-trainer');
+  const play = useSound();
   const idRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const spawnRef = useRef<ReturnType<typeof setInterval>>();
@@ -35,11 +47,11 @@ export default function AimTrainer() {
     setGameState({
       targets: [],
       score: 0,
-      timeLeft: TIME_LIMIT,
+      timeLeft: timeLimit,
       isRunning: true,
       misses: 0,
     });
-  }, []);
+  }, [timeLimit]);
 
   // Timer and spawn logic
   useEffect(() => {
@@ -56,13 +68,13 @@ export default function AimTrainer() {
       });
     }, 1000);
 
-    spawnRef.current = setInterval(spawnTargetCallback, SPAWN_INTERVAL);
+    spawnRef.current = setInterval(spawnTargetCallback, spawnInterval);
 
     return () => {
       clearInterval(timerRef.current);
       clearInterval(spawnRef.current);
     };
-  }, [gameState.isRunning, spawnTargetCallback]);
+  }, [gameState.isRunning, spawnTargetCallback, spawnInterval]);
 
   // Update high score when game ends
   useEffect(() => {
@@ -75,13 +87,20 @@ export default function AimTrainer() {
     }
   }, [gameState.isRunning, gameState.timeLeft, gameState.score]);
 
+    useEffect(() => {
+    if (gameState.timeLeft === 0 && !gameState.isRunning && gameState.score > 0) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isRunning, gameState.timeLeft]);
+
   const onHitTarget = useCallback((id: number) => {
+    play('success');
     setGameState(prev => ({
       ...prev,
       targets: hitTarget(prev.targets, id),
-      score: prev.score + 1,
+      score: prev.score + pointsPerHit,
     }));
-  }, []);
+  }, [pointsPerHit]);
 
   const onTargetClick = useCallback((id: number) => {
     handleTargetClick(gameState.isRunning, onHitTarget, id);
@@ -99,12 +118,13 @@ export default function AimTrainer() {
   }, [gameState.isRunning, onMiss]);
 
   const accuracy = calculateAccuracy(gameState.score, gameState.misses);
-  const notStarted = !gameState.isRunning && gameState.timeLeft === TIME_LIMIT;
+  const notStarted = !gameState.isRunning && gameState.timeLeft === timeLimit;
   const gameEnded = gameState.timeLeft === 0;
 
   return (
     <GameLayout
       title="Aim Trainer"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={start}

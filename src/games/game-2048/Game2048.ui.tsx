@@ -1,22 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
+import { useGridKeyNav } from '../../hooks/useGridKeyNav';
 import {
   Board,
   GameState,
+  INITIAL_TILES,
   createInitialState,
   move,
   addRandom,
   hasValidMoves,
 } from './Game2048';
 import { useKeyboardControls, useSwipeControls } from './Game2048.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
-export default function Game2048() {
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+export default function Game2048({ daily = false, dailySeed }: { daily?: boolean; dailySeed?: number }) {
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  // More starting tiles = less room to manoeuvre.
+  const initialTiles = Math.max(1, applyDifficulty(INITIAL_TILES, difficultySettings, 'complexity'));
+  const scoreMultiplier = difficultySettings.scoreMultiplier;
+
+  const [gameState, setGameState] = useState<GameState>(() => (!daily ? loadSavedState<GameState>('2048', d => d as GameState) : null) ?? createInitialState(daily ? dailySeed : undefined, initialTiles));
   const [highScore, setHighScoreState] = useState(getHighScore('2048'));
+  const { record } = useGameResult('2048', { daily });
+  useGameStatePersistence("game-2048", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
+  const { onKeyDown } = useGridKeyNav(4);
 
   // Handle move
   const handleMove = useCallback((dir: 'left' | 'right' | 'up' | 'down') => {
+    play('move');
     if (gameState.isGameOver) return;
     
     setGameState(prev => {
@@ -24,7 +42,7 @@ export default function Game2048() {
       if (!moved) return prev;
       
       const boardWithNew = addRandom(newBoard);
-      const newScore = prev.score + points;
+      const newScore = prev.score + Math.round(points * scoreMultiplier);
       const isGameOver = !hasValidMoves(boardWithNew);
       
       return {
@@ -33,7 +51,7 @@ export default function Game2048() {
         isGameOver,
       };
     });
-  }, [gameState.isGameOver]);
+  }, [gameState.isGameOver, scoreMultiplier]);
 
   // Keyboard controls
   useKeyboardControls(handleMove, !gameState.isGameOver);
@@ -52,14 +70,22 @@ export default function Game2048() {
     }
   }, [gameState.isGameOver, gameState.score]);
 
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
+
   const reset = useCallback(() => {
-    setGameState(createInitialState());
+    clearSavedState('game-2048');
+    setGameState(createInitialState(daily ? dailySeed : undefined, initialTiles));
     setHighScoreState(getHighScore('2048'));
-  }, []);
+  }, [daily, dailySeed, initialTiles]);
 
   return (
     <GameLayout
       title="2048"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={reset}
@@ -70,7 +96,7 @@ export default function Game2048() {
         {/* Responsive Game Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
           <div
-            className="absolute inset-0 bg-gray-800 p-2 sm:p-4 rounded-lg grid grid-cols-4 gap-1 sm:gap-2 touch-pan-y"
+            className="absolute inset-0 bg-gray-800 p-2 sm:p-4 rounded-lg grid grid-cols-4 gap-1 sm:gap-2 touch-pan-y" onKeyDown={onKeyDown}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             style={{ touchAction: 'pan-y' }}

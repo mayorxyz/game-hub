@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
 import GameLayout from '../../components/ui/GameLayout';
 import {
   GameState,
@@ -13,22 +15,38 @@ import {
   decrementTime,
 } from './WhackAMole';
 import { handleWhack } from './WhackAMole.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
 export default function WhackAMole() {
-  const [gameState, setGameState] = useState<GameState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  const duration = applyDifficulty(GAME_DURATION, difficultySettings, 'time');
+  const spawnInterval = Math.round(MOLE_SPAWN_INTERVAL / difficultySettings.speedMultiplier);
+  const pointsPerMole = Math.max(1, applyDifficulty(1, difficultySettings, 'score'));
+
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(duration));
   const [highScore, setHighScoreState] = useState(getHighScore('whack-a-mole'));
+  const { record } = useGameResult('whack-a-mole');
+  const play = useSound();
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const moleRef = useRef<ReturnType<typeof setInterval>>();
+
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
 
   const start = useCallback(() => {
     setGameState({
       moles: Array(GRID_SIZE * GRID_SIZE).fill(false),
       score: 0,
-      time: GAME_DURATION,
+      time: duration,
       isRunning: true,
       isGameOver: false,
     });
-  }, []);
+  }, [duration]);
 
   // Timer and mole spawning
   useEffect(() => {
@@ -51,13 +69,13 @@ export default function WhackAMole() {
         ...prev,
         moles: spawnMoles(),
       }));
-    }, MOLE_SPAWN_INTERVAL);
+    }, spawnInterval);
 
     return () => {
       clearInterval(timerRef.current);
       clearInterval(moleRef.current);
     };
-  }, [gameState.isRunning]);
+  }, [gameState.isRunning, spawnInterval]);
 
   // Update high score when game ends
   useEffect(() => {
@@ -68,25 +86,27 @@ export default function WhackAMole() {
   }, [gameState.isGameOver, gameState.score, highScore]);
 
   const onWhack = useCallback((idx: number) => {
+    play('success');
     setGameState(prev => {
       const { moles, success } = whackMole(prev.moles, idx);
       return {
         ...prev,
         moles,
-        score: success ? prev.score + 1 : prev.score,
+        score: success ? prev.score + pointsPerMole : prev.score,
       };
     });
-  }, []);
+  }, [pointsPerMole]);
 
   const onMoleClick = useCallback((idx: number) => {
     handleWhack(gameState.moles, idx, gameState.isRunning, onWhack);
   }, [gameState.moles, gameState.isRunning, onWhack]);
 
-  const notStarted = !gameState.isRunning && !gameState.isGameOver && gameState.time === GAME_DURATION;
+  const notStarted = !gameState.isRunning && !gameState.isGameOver && gameState.time === duration;
 
   return (
     <GameLayout
       title="Whack-a-Mole"
+      showDifficulty
       score={`${gameState.score} · Time: ${gameState.time}s`}
       highScore={highScore}
       onReset={start}

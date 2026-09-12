@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Heart, Clock, Trophy, ChevronLeft, Info, Star } from 'lucide-react';
+import { Play, Heart, Clock, Trophy, ChevronLeft, Info, Star, Users } from 'lucide-react';
 import { getGameBySlug } from '../../data/games';
 import { getHighScore, isFavorite, addFavorite, removeFavorite } from '../../lib/persistence';
 import GameArtwork from '../../components/game/GameArtwork';
@@ -83,8 +83,16 @@ export default function GamePreview() {
                   {game.difficulty}
                 </span>
                 <span className="px-3 py-1.5 rounded-full bg-white/10 text-sm text-gray-300 capitalize">
-                  {game.mode === 'bot' ? 'vs Bot' : game.mode === 'house' ? 'vs House' : 'Single Player'}
+                  {(game.modes ?? [game.mode])
+                    .map(m => (m === 'bot' ? 'vs Bot' : m === 'house' ? 'vs House' : m === 'local' ? '2-Player' : 'Single Player'))
+                    .join(' · ')}
                 </span>
+                {game.modes?.includes('local') && (
+                  <span className="px-3 py-1.5 rounded-full bg-blue-500/15 text-sm text-blue-300 flex items-center gap-1">
+                    <Users size={12} />
+                    Local 2-Player
+                  </span>
+                )}
                 <span className="px-3 py-1.5 rounded-full bg-white/10 text-sm text-gray-300 flex items-center gap-1">
                   <Clock size={12} />
                   {game.estimatedPlayTime}

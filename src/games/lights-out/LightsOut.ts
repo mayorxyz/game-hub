@@ -17,8 +17,9 @@ export interface LightsOutConfig {
 
 export function toggle(board: Board, r: number, c: number): Board {
   const n = board.map(row => [...row]);
+  const size = board.length;
   const f = (r: number, c: number) => {
-    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+    if (r >= 0 && r < size && c >= 0 && c < size) {
       n[r][c] = n[r][c] ? 0 : 1;
     }
   };
@@ -30,14 +31,16 @@ export function toggle(board: Board, r: number, c: number): Board {
   return n;
 }
 
-export function createPuzzle(): Board {
-  const b: Board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
-  for (let i = 0; i < 8; i++) {
-    const r = Math.floor(Math.random() * GRID_SIZE);
-    const c = Math.floor(Math.random() * GRID_SIZE);
+export function createPuzzle(size: number = GRID_SIZE): Board {
+  const b: Board = Array.from({ length: size }, () => Array(size).fill(0));
+  // Scale the scramble with the board area (8 toggles for the default 5x5 board).
+  const toggles = Math.round(size * size * 0.32);
+  for (let i = 0; i < toggles; i++) {
+    const r = Math.floor(Math.random() * size);
+    const c = Math.floor(Math.random() * size);
     const f = toggle(b, r, c);
-    for (let ri = 0; ri < GRID_SIZE; ri++) {
-      for (let ci = 0; ci < GRID_SIZE; ci++) {
+    for (let ri = 0; ri < size; ri++) {
+      for (let ci = 0; ci < size; ci++) {
         b[ri][ci] = f[ri][ci];
       }
     }
@@ -49,8 +52,8 @@ export function checkWin(board: Board): boolean {
   return board.every(row => row.every(v => v === 0));
 }
 
-export function createInitialState(): GameState {
-  const board = createPuzzle();
+export function createInitialState(size: number = GRID_SIZE): GameState {
+  const board = createPuzzle(size);
   return {
     board,
     moves: 0,

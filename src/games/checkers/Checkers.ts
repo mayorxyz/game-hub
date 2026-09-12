@@ -128,15 +128,27 @@ export function applyMove(board: Board, from: [number, number], to: [number, num
   return nb;
 }
 
-export function botMove(board: Board): Move | null {
+// Higher skill makes the bot pick stronger moves more often instead of playing randomly.
+export function botMove(board: Board, skill: number = 0.5): Move | null {
   const moves = getAllMoves(board, 2);
   if (moves.length === 0) return null;
-  
-  const captures = moves.filter(m => m.captures.length > 0);
-  if (captures.length > 0) {
-    return captures[Math.floor(Math.random() * captures.length)];
+
+  const randomMove = (pool: Move[]) => pool[Math.floor(Math.random() * pool.length)];
+
+  if (Math.random() > skill) {
+    const captures = moves.filter(m => m.captures.length > 0);
+    return captures.length > 0 ? randomMove(captures) : randomMove(moves);
   }
-  return moves[Math.floor(Math.random() * moves.length)];
+
+  // Prefer captures, then advance toward the far side (kings are worth more).
+  const scored = moves.map(m => {
+    const piece = board[m.from[0]][m.from[1]];
+    let score = m.captures.length * 10;
+    score += piece?.king ? 0 : (7 - m.to[0]) / 7;
+    return { move: m, score };
+  });
+  const best = Math.max(...scored.map(s => s.score));
+  return randomMove(scored.filter(s => s.score === best).map(s => s.move));
 }
 
 export function checkGameOver(board: Board): { isOver: boolean; winner: string } {

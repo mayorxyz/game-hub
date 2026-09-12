@@ -1,6 +1,6 @@
 // Achievement definitions and checker
 
-import { getGameStats, type GameStats } from './persistence';
+import { getGameStats, getUnlockedAchievements, unlockAchievement, type GameStats } from './persistence';
 import { getCurrentStreak, getLongestStreak, getTotalDaysPlayed } from './daily';
 
 export interface Achievement {
@@ -215,4 +215,13 @@ export function getAchievementProgress(
   if (!achievement.progress) return 0;
   const current = achievement.progress(stats);
   return Math.min(current / achievement.target, 1);
+}
+
+// Check for newly unlocked achievements, persist them, and return the newly unlocked list.
+export function checkAndUnlockAchievements(): Achievement[] {
+  const unlockedIds = getUnlockedAchievements();
+  const stats = getGameStats();
+  const newlyUnlocked = checkAchievements(unlockedIds, stats);
+  newlyUnlocked.forEach(a => unlockAchievement(a.id));
+  return newlyUnlocked;
 }

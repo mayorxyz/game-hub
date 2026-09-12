@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SnakeState, createInitialState, moveSnake, generateFood } from './Snake';
 import { handleDirectionInput, handleStartGame, handleResetGame } from './Snake.controls';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+ import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
 import { useDifficulty } from '../../hooks/useDifficulty';
 import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 import DifficultySelector from '../../components/ui/DifficultySelector';
@@ -15,12 +17,14 @@ export default function SnakeUI() {
   const difficultySettings = getDifficultySettings(difficulty);
   
   const gridSize = applyDifficulty(BASE_GRID_SIZE, difficultySettings, 'size');
-  const speed = applyDifficulty(BASE_SPEED, difficultySettings, 'speed');
+  const speed = Math.round(BASE_SPEED / difficultySettings.speedMultiplier);
   const scoreMultiplier = difficultySettings.scoreMultiplier;
   
   const [gameState, setGameState] = useState<SnakeState>(createInitialState(gridSize, scoreMultiplier));
   const [currentFruit, setCurrentFruit] = useState(FRUITS[0]);
   const [highScore, setHighScoreState] = useState(getHighScore('snake'));
+   const { record } = useGameResult('snake');
+  const play = useSound();
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [showCollisionFlash, setShowCollisionFlash] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -82,6 +86,9 @@ export default function SnakeUI() {
         return;
       }
 
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
       switch (e.key) {
         case 'ArrowUp':
         case 'w':
@@ -109,6 +116,18 @@ export default function SnakeUI() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
+
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
+
+  const prevScoreRef = useRef(gameState.score);
+  useEffect(() => {
+    if (gameState.score > prevScoreRef.current) play('success');
+    prevScoreRef.current = gameState.score;
+  }, [gameState.score]);
 
   const handleReset = () => {
     handleResetGame(gridSize, scoreMultiplier, setGameState);

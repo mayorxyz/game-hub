@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import VirtualDPad from '../../components/ui/controls/VirtualDPad';
 import TouchControlContainer from '../../components/ui/controls/TouchControlContainer';
 import {
@@ -11,16 +14,28 @@ import {
   checkWin,
 } from './Sokoban';
 import { handleDirectionInput } from './Sokoban.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { type Difficulty } from '../../lib/difficulty';
+import DifficultySelector from '../../components/ui/DifficultySelector';
+
+// LEVELS is ordered easiest -> hardest.
+const levelForDifficulty = (difficulty: Difficulty): number =>
+  difficulty === 'easy' ? 0 : difficulty === 'hard' ? 2 : 1;
 
 export default function Sokoban() {
-  const [levelIndex, setLevelIndex] = useState(0);
-  const parsed = parseLevel(LEVELS[0]);
-  const [boxes, setBoxes] = useState<Set<string>>(() => new Set(parsed.boxes));
-  const [player, setPlayer] = useState<[number, number]>(() => parsed.player);
-  const [moves, setMoves] = useState(0);
-  const [won, setWon] = useState(false);
+  const { difficulty, setDifficulty } = useDifficulty();
+  const levelIndex = levelForDifficulty(difficulty);
+  const parsed = parseLevel(LEVELS[levelIndex]);
+  const [savedSokoban] = useState(() => loadSavedState<{ boxes: string[]; player: [number, number]; moves: number; won: boolean }>('sokoban', d => d as { boxes: string[]; player: [number, number]; moves: number; won: boolean }));
+  const [boxes, setBoxes] = useState<Set<string>>(() => new Set(savedSokoban && !savedSokoban.won ? savedSokoban.boxes : parsed.boxes));
+  const [player, setPlayer] = useState<[number, number]>(() => (savedSokoban && !savedSokoban.won ? savedSokoban.player : parsed.player));
+  const [moves, setMoves] = useState(savedSokoban && !savedSokoban.won ? savedSokoban.moves : 0);
+  const [won, setWon] = useState<boolean>(savedSokoban && !savedSokoban.won ? savedSokoban.won : false);
   const storedBest = getHighScore('sokoban');
   const [bestMoves, setBestMoves] = useState<number>(storedBest > 0 ? 10000 - storedBest : Infinity);
+  const { record } = useGameResult('sokoban');
+  const play = useSound();
+  useGameStatePersistence('sokoban', { boxes: Array.from(boxes), player, moves, won }, s => s, s => !s.won);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -62,7 +77,14 @@ export default function Sokoban() {
     return () => window.removeEventListener('keydown', h);
   }, [player, boxes, parsed, won]);
 
+    useEffect(() => {
+    if (won) {
+      record({ won: true, score: 10000 - moves });
+    }
+  }, [won]);
+
   const reset = () => {
+    clearSavedState('sokoban');
     setBoxes(new Set(parsed.boxes));
     setPlayer(parsed.player);
     setMoves(0);
@@ -77,6 +99,7 @@ export default function Sokoban() {
   }, [won, moves, bestMoves]);
 
   const handleDirectionPress = (direction: 'up' | 'down' | 'left' | 'right') => {
+    play('move');
     if (won) return;
     let dr = 0;
     let dc = 0;
@@ -118,6 +141,21 @@ export default function Sokoban() {
     >
       <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {won && <p className="text-green-400">🎉 Complete!</p>}
+
+        {/* Difficulty Selector */}
+        <DifficultySelector
+          value={difficulty}
+          onChange={(newDifficulty) => {
+            setDifficulty(newDifficulty);
+            // The level layout is baked into the state, so start the new level.
+            const newParsed = parseLevel(LEVELS[levelForDifficulty(newDifficulty)]);
+            clearSavedState('sokoban');
+            setBoxes(new Set(newParsed.boxes));
+            setPlayer(newParsed.player);
+            setMoves(0);
+            setWon(false);
+          }}
+        />
 
         {/* Responsive Game Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">

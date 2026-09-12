@@ -1,17 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   HangmanState,
+  MAX_WRONG_GUESSES,
   createInitialState,
   resetGame,
   getDisplayWord,
 } from './Hangman';
 import { handleLetterGuess } from './Hangman.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 
 export default function Hangman() {
-  const [gameState, setGameState] = useState<HangmanState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  // Fewer allowed mistakes on harder settings (inverse of the complexity multiplier).
+  const maxWrong = Math.max(3, Math.round(MAX_WRONG_GUESSES / getDifficultySettings(difficulty).complexityMultiplier));
+
+  const [gameState, setGameState] = useState<HangmanState>(() => {
+    const saved = loadSavedState<HangmanState>('hangman', d => {
+      const raw = d as Omit<HangmanState, 'guessedLetters'> & { guessedLetters: string[] };
+      return { ...raw, guessedLetters: new Set(raw.guessedLetters ?? []) };
+    });
+    return saved ?? createInitialState();
+  });
   const [highScore, setHighScoreState] = useState(getHighScore('hangman'));
+  const { record } = useGameResult('hangman');
+  useGameStatePersistence('hangman', gameState, s => ({ ...s, guessedLetters: Array.from(s.guessedLetters) }), s => !s.isWon && !s.isLost);
+  const play = useSound();
 
   const onGuess = (newState: HangmanState) => {
     setGameState(newState);
@@ -25,16 +44,25 @@ export default function Hangman() {
   };
 
   const onLetterClick = (letter: string) => {
-    handleLetterGuess(gameState, letter, onGuess);
+    play('click');
+    handleLetterGuess(gameState, letter, onGuess, maxWrong);
   };
 
+    useEffect(() => {
+    if (gameState.isWon || gameState.isLost) {
+      record({ won: gameState.isWon, score: 0 });
+    }
+  }, [gameState.isWon, gameState.isLost]);
+
   const onReset = () => {
+    clearSavedState('hangman');
     setGameState(resetGame(gameState));
   };
 
   return (
     <GameLayout
       title="Hangman"
+      showDifficulty
       score={`Streak: ${gameState.streak}`}
       highScore={highScore}
       onReset={onReset}
@@ -81,7 +109,7 @@ export default function Hangman() {
           ))}
         </div>
 
-        <p className="text-gray-500 text-xs">{6 - gameState.wrongGuesses} guesses remaining</p>
+        <p className="text-gray-500 text-xs">{maxWrong - gameState.wrongGuesses} guesses remaining</p>
       </div>
     </GameLayout>
   );

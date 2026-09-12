@@ -8,11 +8,12 @@ export function handleCellClick(
   c: number,
   isPlayerTurn: boolean,
   isGameOver: boolean,
-  onMove: (r: number, c: number) => void
+  onMove: (r: number, c: number) => void,
+  player: 1 | 2 = 1
 ): void {
   if (isGameOver || !isPlayerTurn) return;
   
-  const flips = getFlips(board, r, c, 1);
+  const flips = getFlips(board, r, c, player);
   if (flips.length === 0) return;
   
   onMove(r, c);

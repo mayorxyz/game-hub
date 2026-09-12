@@ -1,6 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
 import {
   Card,
   GameState,
@@ -12,12 +14,24 @@ import {
   determineResult,
 } from './Blackjack';
 import { handleDeal, handleBetChange } from './Blackjack.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, type Difficulty } from '../../lib/difficulty';
+
+// A dealer that stands on a higher total is harder to beat.
+const DEALER_STAND_ON: Record<Difficulty, number> = { easy: 16, medium: 17, hard: 18 };
 
 export default function Blackjack() {
+  const { difficulty } = useDifficulty();
+  const scoreMultiplier = getDifficultySettings(difficulty).scoreMultiplier;
+  const dealerStandOn = DEALER_STAND_ON[difficulty];
+
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('blackjack'));
+  const { record } = useGameResult('blackjack');
+  const play = useSound();
 
   const onDeal = useCallback(() => {
+    play('move');
     const { deck, playerHand, dealerHand, chips } = dealCards(gameState.deck, gameState.bet);
     setGameState(prev => ({
       ...prev,
@@ -48,14 +62,14 @@ export default function Blackjack() {
   }, [gameState.deck, gameState.playerHand]);
 
   const onStand = useCallback(() => {
-    const { deck, dealerHand } = dealerPlay(gameState.deck, gameState.dealerHand);
+    const { deck, dealerHand } = dealerPlay(gameState.deck, gameState.dealerHand, dealerStandOn);
     const playerValue = handValue(gameState.playerHand);
     const dealerValue = handValue(dealerHand);
     const result = determineResult(playerValue, dealerValue);
     
     let chipsChange = 0;
     if (result.includes('win')) {
-      chipsChange = gameState.bet * 2;
+      chipsChange = Math.round(gameState.bet * 2 * scoreMultiplier);
       setHighScoreState(prev => {
         const best = Math.max(prev, gameState.chips + chipsChange);
         setHighScore('blackjack', best);
@@ -74,13 +88,19 @@ export default function Blackjack() {
       result,
       isDealerRevealed: true,
     }));
-  }, [gameState]);
+  }, [gameState, dealerStandOn, scoreMultiplier]);
 
   const onBetChange = useCallback((direction: 'increase' | 'decrease') => {
     handleBetChange(gameState.bet, gameState.chips, 5, gameState.chips, direction, (newBet) => {
       setGameState(prev => ({ ...prev, bet: newBet }));
     });
   }, [gameState.bet, gameState.chips]);
+
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: gameState.result.includes('You win'), score: gameState.chips });
+    }
+  }, [gameState.isGameOver]);
 
   const reset = useCallback(() => {
     setGameState(createInitialState());
@@ -106,6 +126,7 @@ export default function Blackjack() {
   return (
     <GameLayout
       title="Blackjack"
+      showDifficulty
       score={`$${gameState.chips}`}
       highScore={highScore}
       onReset={reset}

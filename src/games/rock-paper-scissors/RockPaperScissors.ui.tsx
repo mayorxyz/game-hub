@@ -12,14 +12,22 @@ import {
   getResultText,
 } from './RockPaperScissors';
 import { handleChoiceSelect } from './RockPaperScissors.controls';
+import { useSound } from '../../hooks/useSound';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 
 export default function RockPaperScissors() {
+  const { difficulty } = useDifficulty();
+  // How often the bot exploits your most frequent choice instead of throwing randomly.
+  const predictionChance = Math.min(1, getDifficultySettings(difficulty).complexityMultiplier * 0.7);
+
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('rock-paper-scissors'));
+  const play = useSound();
 
   // Handle player choice
   const onPlay = useCallback((choice: Choice) => {
-    const bot = botChoice(gameState.history);
+    const bot = botChoice(gameState.history, predictionChance);
     const result = getResult(choice, bot);
     const resultText = getResultText(result);
     
@@ -29,6 +37,8 @@ export default function RockPaperScissors() {
     if (result === 'win') newScore.wins++;
     else if (result === 'lose') newScore.losses++;
     else newScore.draws++;
+
+    play(result === 'win' ? 'success' : result === 'lose' ? 'gameover' : 'click');
 
     setGameState({
       history: newHistory,
@@ -41,7 +51,7 @@ export default function RockPaperScissors() {
       setHighScore('rock-paper-scissors', best);
       return best;
     });
-  }, [gameState.history, gameState.score]);
+  }, [gameState.history, gameState.score, predictionChance]);
 
   const onChoiceClick = useCallback((choice: Choice) => {
     handleChoiceSelect(choice, onPlay);
@@ -54,6 +64,7 @@ export default function RockPaperScissors() {
   return (
     <GameLayout
       title="Rock Paper Scissors"
+      showDifficulty
       score={`W:${gameState.score.wins} L:${gameState.score.losses} D:${gameState.score.draws}`}
       highScore={highScore}
       onReset={reset}

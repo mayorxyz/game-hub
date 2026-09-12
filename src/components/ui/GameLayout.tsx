@@ -1,5 +1,7 @@
 import React from 'react';
 import { RotateCcw, Pause } from 'lucide-react';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import DifficultySelector from './DifficultySelector';
 
 interface GameLayoutProps {
   title: string;
@@ -7,10 +9,12 @@ interface GameLayoutProps {
   highScore?: number | string;
   onReset?: () => void;
   onPause?: () => void;
+  showDifficulty?: boolean;
   children: React.ReactNode;
 }
 
-export default function GameLayout({ title, score, highScore, onReset, onPause, children }: GameLayoutProps) {
+export default function GameLayout({ title, score, highScore, onReset, onPause, showDifficulty = false, children }: GameLayoutProps) {
+  const { difficulty, setDifficulty } = useDifficulty();
   return (
     <div className="w-full h-full flex flex-col items-center justify-between p-3 sm:p-5">
       {/* Compact HUD Bar */}
@@ -41,6 +45,7 @@ export default function GameLayout({ title, score, highScore, onReset, onPause, 
           {onPause && (
             <button
               onClick={onPause}
+              aria-label="Pause"
               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               title="Pause"
             >
@@ -50,6 +55,7 @@ export default function GameLayout({ title, score, highScore, onReset, onPause, 
           {onReset && (
             <button
               onClick={onReset}
+              aria-label="Restart game"
               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               title="Reset"
             >
@@ -58,6 +64,12 @@ export default function GameLayout({ title, score, highScore, onReset, onPause, 
           )}
         </div>
       </div>
+
+      {showDifficulty && (
+        <div className="w-full flex justify-center mb-2 sm:mb-3">
+          <DifficultySelector value={difficulty} onChange={setDifficulty} />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 w-full flex items-center justify-center">

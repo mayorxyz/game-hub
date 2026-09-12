@@ -1,4 +1,5 @@
 // Pure game logic for Sudoku - no React, no UI, no input handling
+import { mulberry32 } from '../../lib/random';
 
 export type Board = (number | null)[][];
 
@@ -56,27 +57,38 @@ export function solveSudoku(board: Board): boolean {
   return true;
 }
 
-export function generatePuzzle(): { puzzle: Board; solution: Board } {
+export const BASE_REMOVED_CELLS = 45;
+
+export function generatePuzzle(seed?: number, removedCells: number = BASE_REMOVED_CELLS): { puzzle: Board; solution: Board } {
+  const rng = seed !== undefined ? mulberry32(seed) : Math.random;
   const board = createEmptyBoard();
+  if (seed !== undefined) {
+    const firstRow = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for (let i = firstRow.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [firstRow[i], firstRow[j]] = [firstRow[j], firstRow[i]];
+    }
+    board[0] = firstRow;
+  }
   solveSudoku(board);
-  
+
   const solution = board.map(row => [...row]);
   const puzzle = board.map(row => [...row]);
-  
-  // Remove 45 cells to create the puzzle
-  for (let i = 0; i < 45; i++) {
-    const row = Math.floor(Math.random() * 9);
-    const col = Math.floor(Math.random() * 9);
+
+  // Remove cells to create the puzzle (more removals = fewer givens = harder)
+  for (let i = 0; i < removedCells; i++) {
+    const row = Math.floor(rng() * 9);
+    const col = Math.floor(rng() * 9);
     if (puzzle[row][col] !== null) {
       puzzle[row][col] = null;
     }
   }
-  
+
   return { puzzle, solution };
 }
 
-export function createInitialState(): SudokuState {
-  const { puzzle, solution } = generatePuzzle();
+export function createInitialState(seed?: number, removedCells: number = BASE_REMOVED_CELLS): SudokuState {
+  const { puzzle, solution } = generatePuzzle(seed, removedCells);
   return {
     puzzle,
     solution,
@@ -120,8 +132,8 @@ export function inputNumber(state: SudokuState, num: number): SudokuState {
   };
 }
 
-export function resetGame(): SudokuState {
-  return createInitialState();
+export function resetGame(seed?: number, removedCells: number = BASE_REMOVED_CELLS): SudokuState {
+  return createInitialState(seed, removedCells);
 }
 
 export function isCellOriginal(state: SudokuState, row: number, col: number): boolean {

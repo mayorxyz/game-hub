@@ -9,8 +9,16 @@ import {
   isNewBest,
 } from './ReactionTimer';
 import { handleClick } from './ReactionTimer.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
+import { useSound } from '../../hooks/useSound';
 
 export default function ReactionTimer() {
+  const { difficulty } = useDifficulty();
+  // Harder settings shorten the wait before the screen turns green.
+  const timeMultiplier = getDifficultySettings(difficulty).timeMultiplier;
+  const play = useSound();
+
   const [gameState, setGameState] = useState<ReactionTimerState>(
     createInitialState(getHighScore('reaction-timer') || Infinity)
   );
@@ -24,8 +32,9 @@ export default function ReactionTimer() {
 
   const onStart = () => {
     setGameState(prev => ({ ...prev, phase: 'ready' }));
-    const delay = getDelay();
+    const delay = getDelay(timeMultiplier);
     timerRef.current = setTimeout(() => {
+      play('tick');
       setGameState(prev => ({
         ...prev,
         phase: 'go',
@@ -36,10 +45,12 @@ export default function ReactionTimer() {
 
   const onTooEarly = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    play('gameover');
     setGameState(prev => ({ ...prev, phase: 'too-early' }));
   };
 
   const onResult = (reactionTime: number) => {
+    play('success');
     setGameState(prev => {
       const newBest = isNewBest(reactionTime, prev.bestTime) ? reactionTime : prev.bestTime;
       if (isNewBest(reactionTime, prev.bestTime)) {
@@ -77,6 +88,7 @@ export default function ReactionTimer() {
   return (
     <GameLayout
       title="Reaction Timer"
+      showDifficulty
       score={gameState.phase === 'result' ? `${gameState.reactionTime}ms` : undefined}
       highScore={gameState.bestTime === Infinity ? undefined : `${gameState.bestTime}ms`}
     >

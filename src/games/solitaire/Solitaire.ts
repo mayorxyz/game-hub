@@ -78,7 +78,7 @@ export function canPlaceOnTableau(card: Card, tableau: Card[]): boolean {
   return top.faceUp && card.color !== top.color && card.rank === top.rank - 1;
 }
 
-export function drawCard(state: SolitaireState): SolitaireState {
+export function drawCard(state: SolitaireState, drawCount: number = 1): SolitaireState {
   if (state.stock.length === 0) {
     return {
       ...state,
@@ -87,11 +87,12 @@ export function drawCard(state: SolitaireState): SolitaireState {
       moves: state.moves + 1,
     };
   } else {
-    const card = { ...state.stock[state.stock.length - 1], faceUp: true };
+    const n = Math.max(1, Math.min(drawCount, state.stock.length));
+    const drawn = state.stock.slice(-n).reverse().map(c => ({ ...c, faceUp: true }));
     return {
       ...state,
-      stock: state.stock.slice(0, -1),
-      waste: [...state.waste, card],
+      stock: state.stock.slice(0, -n),
+      waste: [...state.waste, ...drawn],
       moves: state.moves + 1,
     };
   }

@@ -126,14 +126,14 @@ export function minimax(board: Board, depth: number, alpha: number, beta: number
   }
 }
 
-export function getBestMove(board: Board): number {
+export function getBestMove(board: Board, depth: number = 5): number {
   let bestScore = -Infinity;
   let bestCol = 3;
   for (let c = 0; c < COLS; c++) {
     if (board[0][c] === 0) {
       const nb = dropPiece(board, c, 2);
       if (nb) {
-        const score = minimax(nb, 5, -Infinity, Infinity, false, 2, 1);
+        const score = minimax(nb, depth, -Infinity, Infinity, false, 2, 1);
         if (score > bestScore) {
           bestScore = score;
           bestCol = c;

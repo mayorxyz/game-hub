@@ -1,8 +1,9 @@
 import React, { useEffect, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Trophy, Heart } from 'lucide-react';
 import { getGameBySlug } from '../../data/games';
 import { getHighScore, addRecentlyPlayed, isFavorite } from '../../lib/persistence';
+import { getDailySeed } from '../../lib/daily';
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -35,6 +36,9 @@ class ErrorBoundary extends React.Component<
 export default function GameSession() {
   const { slug } = useParams<{ slug: string }>();
   const game = getGameBySlug(slug || '');
+  const [searchParams] = useSearchParams();
+  const isDaily = searchParams.get('daily') === '1';
+  const dailySeed = isDaily ? getDailySeed(game?.id ?? '') : undefined;
 
   useEffect(() => {
     if (game) {
@@ -57,7 +61,7 @@ export default function GameSession() {
   }
 
   const highScore = getHighScore(game.id);
-  const GameComponent = game.component;
+  const GameComponent = game.component as React.LazyExoticComponent<React.ComponentType<any>>;
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-[#0a0a0a]">
@@ -96,7 +100,7 @@ export default function GameSession() {
               <div className="text-gray-400">Loading...</div>
             </div>
           }>
-            <GameComponent />
+            <GameComponent daily={isDaily} dailySeed={dailySeed} />
           </Suspense>
         </ErrorBoundary>
       </div>

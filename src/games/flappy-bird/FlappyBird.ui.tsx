@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings } from '../../lib/difficulty';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -25,6 +29,12 @@ export default function FlappyBird() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('flappy-bird'));
+  const { record } = useGameResult('flappy-bird');
+  const play = useSound();
+  const { difficulty } = useDifficulty();
+  const pipeSpeed = PIPE_SPEED * getDifficultySettings(difficulty).speedMultiplier;
+  const pipeSpeedRef = useRef(pipeSpeed);
+  pipeSpeedRef.current = pipeSpeed;
   const gameStateRef = useRef(gameState);
   const animationFrameRef = useRef<number>(0);
 
@@ -33,6 +43,7 @@ export default function FlappyBird() {
 
   // Input controls
   const handleJump = useCallback(() => {
+    play('click');
     if (gameStateRef.current.isRunning && !gameStateRef.current.isGameOver) {
       setGameState(prev => ({
         ...prev,
@@ -63,7 +74,7 @@ export default function FlappyBird() {
         let newBird = updateBird(state.bird, GRAVITY);
 
         // Update pipes
-        const newPipes = updatePipes(state.pipes, PIPE_SPEED, state.frame + 1);
+        const newPipes = updatePipes(state.pipes, pipeSpeedRef.current, state.frame + 1);
 
         // Check pipe collision
         const pipeResult = checkPipeCollision(newBird, newPipes);
@@ -123,6 +134,12 @@ export default function FlappyBird() {
     };
   }, []);
 
+    useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: false, score: gameState.score });
+    }
+  }, [gameState.isGameOver]);
+
   const reset = useCallback(() => {
     const newState = createInitialState();
     newState.isRunning = true;
@@ -137,6 +154,7 @@ export default function FlappyBird() {
   return (
     <GameLayout
       title="Flappy Bird"
+      showDifficulty
       score={gameState.score}
       highScore={highScore}
       onReset={reset}

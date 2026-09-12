@@ -1,4 +1,5 @@
 // Pure game logic for Minesweeper - no React, no UI, no input handling
+import { mulberry32 } from '../../lib/random';
 
 export const BASE_ROWS = 9;
 export const BASE_COLS = 9;
@@ -22,7 +23,7 @@ export interface MinesweeperState {
   flagMode: boolean;
 }
 
-export function createBoard(rows: number = BASE_ROWS, cols: number = BASE_COLS, mines: number = BASE_MINES): Board {
+export function createBoard(rows: number = BASE_ROWS, cols: number = BASE_COLS, mines: number = BASE_MINES, seed?: number): Board {
   const b: Board = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => ({
       mine: false,
@@ -31,10 +32,11 @@ export function createBoard(rows: number = BASE_ROWS, cols: number = BASE_COLS, 
       count: 0,
     }))
   );
+  const rng = seed !== undefined ? mulberry32(seed) : Math.random;
   let p = 0;
   while (p < mines) {
-    const r = Math.floor(Math.random() * rows);
-    const c = Math.floor(Math.random() * cols);
+    const r = Math.floor(rng() * rows);
+    const c = Math.floor(rng() * cols);
     if (!b[r][c].mine) {
       b[r][c].mine = true;
       p++;

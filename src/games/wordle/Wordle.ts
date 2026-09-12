@@ -48,9 +48,9 @@ export function getRandomWord(): string {
   return WORDS[Math.floor(Math.random() * WORDS.length)];
 }
 
-export function createInitialState(): WordleState {
+export function createInitialState(seed?: number): WordleState {
   return {
-    target: getRandomWord(),
+    target: seed !== undefined ? WORDS[seed % WORDS.length] : getRandomWord(),
     guesses: [],
     currentGuess: '',
     isGameOver: false,
@@ -74,12 +74,12 @@ export function removeLetter(state: WordleState): WordleState {
   };
 }
 
-export function submitGuess(state: WordleState): WordleState {
+export function submitGuess(state: WordleState, maxGuesses: number = MAX_GUESSES): WordleState {
   if (state.currentGuess.length !== WORD_LEN || state.isGameOver) return state;
   
   const newGuesses = [...state.guesses, state.currentGuess];
   const isWon = state.currentGuess === state.target;
-  const isGameOver = isWon || newGuesses.length >= MAX_GUESSES;
+  const isGameOver = isWon || newGuesses.length >= maxGuesses;
   
   return {
     ...state,
@@ -90,14 +90,14 @@ export function submitGuess(state: WordleState): WordleState {
   };
 }
 
-export function resetGame(): WordleState {
-  return createInitialState();
+export function resetGame(seed?: number): WordleState {
+  return createInitialState(seed);
 }
 
-export function getRows(state: WordleState): { letters: string[]; states: LetterState[] }[] {
+export function getRows(state: WordleState, maxGuesses: number = MAX_GUESSES): { letters: string[]; states: LetterState[] }[] {
   const evaluations = state.guesses.map(g => evaluateGuess(g, state.target));
   
-  return Array.from({ length: MAX_GUESSES }, (_, i) => {
+  return Array.from({ length: maxGuesses }, (_, i) => {
     if (i < state.guesses.length) {
       return { letters: state.guesses[i].split(''), states: evaluations[i] };
     }

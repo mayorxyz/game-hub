@@ -73,6 +73,8 @@ export default function AppShell({ children }: AppShellProps) {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
               className="p-2 rounded-lg hover:bg-white/5"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}

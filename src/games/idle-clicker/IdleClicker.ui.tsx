@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useSound } from '../../hooks/useSound';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
   IdleClickerState,
   createInitialState,
@@ -8,13 +10,24 @@ import {
   resetGame,
 } from './IdleClicker';
 import { handleClick, handleBuyUpgrade } from './IdleClicker.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
 
 export default function IdleClicker() {
-  const [gameState, setGameState] = useState<IdleClickerState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  const difficultySettings = getDifficultySettings(difficulty);
+  // Harder settings pay more per click/second but charge more for upgrades.
+  const coinMultiplier = difficultySettings.scoreMultiplier;
+  const costMultiplier = difficultySettings.complexityMultiplier;
+  const clickPower = Math.max(1, applyDifficulty(1, difficultySettings, 'score'));
+
+  const [gameState, setGameState] = useState<IdleClickerState>(() => loadSavedState<IdleClickerState>('idle-clicker', d => d as IdleClickerState) ?? createInitialState(costMultiplier, clickPower));
   const [highScore, setHighScoreState] = useState(getHighScore('idle-clicker'));
+  const play = useSound();
+  useGameStatePersistence('idle-clicker', gameState, s => s, () => true);
   const coinsRef = useRef(0);
 
-  const cps = calculateCPS(gameState.upgrades);
+  const cps = calculateCPS(gameState.upgrades) * coinMultiplier;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,20 +46,24 @@ export default function IdleClicker() {
   }, [cps]);
 
   const onClick = (newState: IdleClickerState) => {
+    play('click');
     setGameState(newState);
   };
 
   const onBuy = (newState: IdleClickerState) => {
+    play('success');
     setGameState(newState);
   };
 
   const onReset = () => {
-    setGameState(resetGame());
+    clearSavedState('idle-clicker');
+    setGameState(resetGame(costMultiplier, clickPower));
   };
 
   return (
     <GameLayout
       title="Idle Clicker"
+      showDifficulty
       score={`${Math.floor(gameState.coins)} coins`}
       highScore={highScore}
       onReset={onReset}

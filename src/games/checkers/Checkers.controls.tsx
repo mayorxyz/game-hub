@@ -10,12 +10,13 @@ export function handleCellClick(
   isPlayerTurn: boolean,
   selected: [number, number] | null,
   onSelect: (pos: [number, number] | null) => void,
-  onMove: (move: Move) => void
+  onMove: (move: Move) => void,
+  player: 1 | 2 = 1
 ): void {
   if (isGameOver || !isPlayerTurn) return;
 
   if (selected) {
-    const moves = getAllMoves(board, 1);
+    const moves = getAllMoves(board, player);
     const move = moves.find(
       m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c
     );
@@ -26,7 +27,7 @@ export function handleCellClick(
       onSelect(null);
     }
   } else {
-    if (board[r][c]?.player === 1) {
+    if (board[r][c]?.player === player) {
       onSelect([r, c]);
     }
   }

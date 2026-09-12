@@ -42,31 +42,32 @@ export interface BreakoutConfig {
   paddleWidth: number;
 }
 
-export function createBricks(): Brick[] {
+export function createBricks(rows: number = BRICK_ROWS): Brick[] {
   const bricks: Brick[] = [];
-  for (let r = 0; r < BRICK_ROWS; r++) {
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < BRICK_COLS; c++) {
       bricks.push({
         x: c * (BRICK_WIDTH + 4) + 2,
         y: r * (BRICK_HEIGHT + 4) + 40,
         alive: true,
-        color: BRICK_COLORS[r],
+        color: BRICK_COLORS[r % BRICK_COLORS.length],
       });
     }
   }
   return bricks;
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(speedMultiplier: number = 1, rows: number = BRICK_ROWS): GameState {
+  const speed = 3 * speedMultiplier;
   return {
     ball: {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT - 50,
-      dx: 3,
-      dy: -3,
+      dx: speed,
+      dy: -speed,
     },
     paddleX: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
-    bricks: createBricks(),
+    bricks: createBricks(rows),
     isRunning: false,
     isGameOver: false,
     isWon: false,

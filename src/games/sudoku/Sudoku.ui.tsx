@@ -1,20 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useSound } from '../../hooks/useSound';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
 import {
   SudokuState,
+  BASE_REMOVED_CELLS,
   createInitialState,
   resetGame,
   isCellOriginal,
   isCellError,
 } from './Sudoku';
 import { handleCellClick, handleNumberInput } from './Sudoku.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+import DifficultySelector from '../../components/ui/DifficultySelector';
 
-export default function Sudoku() {
-  const [gameState, setGameState] = useState<SudokuState>(createInitialState());
+export default function Sudoku({ daily = false, dailySeed }: { daily?: boolean; dailySeed?: number }) {
+  const { difficulty, setDifficulty } = useDifficulty();
+  // More removed cells = fewer givens = harder puzzle.
+  const removedCells = Math.min(60, Math.max(30, applyDifficulty(BASE_REMOVED_CELLS, getDifficultySettings(difficulty), 'complexity')));
+
+  const [gameState, setGameState] = useState<SudokuState>(() => {
+    if (!daily) {
+      const saved = loadSavedState<SudokuState>('sudoku', d => d as SudokuState);
+      if (saved && !saved.isWon) return saved;
+    }
+    return createInitialState(daily ? dailySeed : undefined, removedCells);
+  });
   const [bestErr, setBestErr] = useState<number>(
     getHighScore('sudoku') > 0 ? 10000 - getHighScore('sudoku') : Infinity
   );
+
+  const { record } = useGameResult('sudoku', { daily });
+  const play = useSound();
+  useGameStatePersistence('sudoku', gameState, s => s, s => !s.isWon);
 
   const onStateChange = (newState: SudokuState) => {
     setGameState(newState);
@@ -29,11 +50,19 @@ export default function Sudoku() {
   };
 
   const onNumberInput = (num: number) => {
+    play('click');
     handleNumberInput(gameState, num, onStateChange);
   };
 
+  useEffect(() => {
+    if (gameState.isWon) {
+      record({ won: true, score: 10000 - gameState.errors });
+    }
+  }, [gameState.isWon]);
+
   const onReset = () => {
-    setGameState(resetGame());
+    clearSavedState('sudoku');
+    setGameState(resetGame(daily ? dailySeed : undefined, removedCells));
     setBestErr(getHighScore('sudoku') > 0 ? 10000 - getHighScore('sudoku') : Infinity);
   };
 
@@ -46,6 +75,18 @@ export default function Sudoku() {
     >
       <div className="flex flex-col items-center justify-center w-full h-full gap-4">
         {gameState.isWon && <p className="text-green-400">🎉 Solved!</p>}
+
+        {/* Difficulty Selector */}
+        <DifficultySelector
+          value={difficulty}
+          onChange={(newDifficulty) => {
+            setDifficulty(newDifficulty);
+            // The puzzle is generated with the difficulty's given count, so start a fresh one.
+            const newRemoved = Math.min(60, Math.max(30, applyDifficulty(BASE_REMOVED_CELLS, getDifficultySettings(newDifficulty), 'complexity')));
+            clearSavedState('sudoku');
+            setGameState(createInitialState(daily ? dailySeed : undefined, newRemoved));
+          }}
+        />
 
         {/* Responsive Game Grid */}
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">

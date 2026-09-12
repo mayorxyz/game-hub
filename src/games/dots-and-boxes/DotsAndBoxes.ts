@@ -12,16 +12,16 @@ export interface DotsAndBoxesState {
   isGameOver: boolean;
 }
 
-export function createInitialState(): DotsAndBoxesState {
+export function createInitialState(gridSize: number = GRID_SIZE): DotsAndBoxesState {
   return {
-    horizontalLines: Array.from({ length: GRID_SIZE }, () => 
-      Array(GRID_SIZE - 1).fill(false)
+    horizontalLines: Array.from({ length: gridSize }, () => 
+      Array(gridSize - 1).fill(false)
     ),
-    verticalLines: Array.from({ length: GRID_SIZE - 1 }, () => 
-      Array(GRID_SIZE).fill(false)
+    verticalLines: Array.from({ length: gridSize - 1 }, () => 
+      Array(gridSize).fill(false)
     ),
-    boxes: Array.from({ length: GRID_SIZE - 1 }, () => 
-      Array(GRID_SIZE - 1).fill(null)
+    boxes: Array.from({ length: gridSize - 1 }, () => 
+      Array(gridSize - 1).fill(null)
     ),
     currentPlayer: 1,
     player1Score: 0,
@@ -99,6 +99,9 @@ function checkCompletedBoxes(
   let player2Score = state.player2Score;
   let boxCompleted = false;
 
+  // Number of dots per side (the board size is derived from the state).
+  const size = state.horizontalLines.length;
+
   // Check boxes adjacent to the placed line
   if (lineType === 'horizontal') {
     // Check box above (if exists)
@@ -113,7 +116,7 @@ function checkCompletedBoxes(
       }
     }
     // Check box below (if exists)
-    if (lineRow < GRID_SIZE - 1) {
+    if (lineRow < size - 1) {
       const boxRow = lineRow;
       const boxCol = lineCol;
       if (newBoxes[boxRow][boxCol] === null && isBoxComplete(state, boxRow, boxCol)) {
@@ -136,7 +139,7 @@ function checkCompletedBoxes(
       }
     }
     // Check box to the right (if exists)
-    if (lineCol < GRID_SIZE - 1) {
+    if (lineCol < size - 1) {
       const boxRow = lineRow;
       const boxCol = lineCol;
       if (newBoxes[boxRow][boxCol] === null && isBoxComplete(state, boxRow, boxCol)) {
@@ -176,4 +179,67 @@ export function getWinner(state: DotsAndBoxesState): 1 | 2 | 'tie' | null {
   if (state.player1Score > state.player2Score) return 1;
   if (state.player2Score > state.player1Score) return 2;
   return 'tie';
+}
+
+export interface LineMove {
+  type: 'horizontal' | 'vertical';
+  row: number;
+  col: number;
+}
+
+function applyMove(state: DotsAndBoxesState, move: LineMove): DotsAndBoxesState {
+  return move.type === 'horizontal'
+    ? placeHorizontalLine(state, move.row, move.col)
+    : placeVerticalLine(state, move.row, move.col);
+}
+
+function boxSideCount(state: DotsAndBoxesState, boxRow: number, boxCol: number): number {
+  const top = state.horizontalLines[boxRow][boxCol];
+  const bottom = state.horizontalLines[boxRow + 1][boxCol];
+  const left = state.verticalLines[boxRow][boxCol];
+  const right = state.verticalLines[boxRow][boxCol + 1];
+  return (top ? 1 : 0) + (bottom ? 1 : 0) + (left ? 1 : 0) + (right ? 1 : 0);
+}
+
+// Greedy bot for player 2: takes boxes it can complete, otherwise plays the
+// safest move (avoiding leaving any box with 3 sides for the opponent).
+export function getBotMove(state: DotsAndBoxesState): LineMove | null {
+  if (state.isGameOver) return null;
+
+  const size = state.horizontalLines.length;
+  const moves: LineMove[] = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size - 1; c++) {
+      if (!state.horizontalLines[r][c]) moves.push({ type: 'horizontal', row: r, col: c });
+    }
+  }
+  for (let r = 0; r < size - 1; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!state.verticalLines[r][c]) moves.push({ type: 'vertical', row: r, col: c });
+    }
+  }
+  if (moves.length === 0) return null;
+
+  const before = state.player1Score + state.player2Score;
+  const scored = moves.map(move => {
+    const next = applyMove(state, move);
+    const gained = next.player1Score + next.player2Score - before;
+    return { move, gained, next };
+  });
+
+  // 1. Complete a box if possible.
+  const completing = scored.filter(x => x.gained > 0);
+  if (completing.length > 0) return completing[0].move;
+
+  // 2. Prefer moves that don't hand the opponent a box.
+  const safe = scored.filter(x => {
+    for (let r = 0; r < size - 1; r++) {
+      for (let c = 0; c < size - 1; c++) {
+        if (x.next.boxes[r][c] === null && boxSideCount(x.next, r, c) === 3) return false;
+      }
+    }
+    return true;
+  });
+  const pool = safe.length > 0 ? safe : scored;
+  return pool[Math.floor(Math.random() * pool.length)].move;
 }

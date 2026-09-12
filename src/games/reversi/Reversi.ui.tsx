@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
+import PassDeviceOverlay from '../../components/ui/PassDeviceOverlay';
 import { getHighScore, setHighScore } from '../../lib/persistence';
+import { useGameResult } from '../../hooks/useGameResult';
+import { useGameStatePersistence, loadSavedState, clearSavedState } from '../../hooks/useGameStatePersistence';
+import { useSound } from '../../hooks/useSound';
 import {
   BOARD_SIZE,
   Board,
@@ -10,161 +14,187 @@ import {
   applyMove,
   countPieces,
   getBestMove,
-  checkGameOver,
 } from './Reversi';
 import { handleCellClick } from './Reversi.controls';
+import { useDifficulty } from '../../hooks/useDifficulty';
+import { getDifficultySettings, applyDifficulty } from '../../lib/difficulty';
+
+const BASE_BOT_DEPTH = 4;
 
 export default function Reversi() {
-  const [gameState, setGameState] = useState<ReversiState>(createInitialState());
+  const { difficulty } = useDifficulty();
+  // Deeper search = stronger bot (clamped to keep the bot's move fast).
+  const botDepth = Math.min(5, Math.max(2, applyDifficulty(BASE_BOT_DEPTH, getDifficultySettings(difficulty), 'complexity')));
+
+  const [gameState, setGameState] = useState<ReversiState>(() => loadSavedState<ReversiState>('reversi', d => d as ReversiState) ?? createInitialState());
   const [highScore, setHighScoreState] = useState(getHighScore('reversi'));
+  const [vsBot, setVsBot] = useState(true);
+  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
+  const [awaitingPass, setAwaitingPass] = useState(false);
+  const [notice, setNotice] = useState('');
+  const { record } = useGameResult('reversi');
+  useGameStatePersistence("reversi", gameState, s => s, s => !s.isGameOver);
+  const play = useSound();
 
-  // Auto-pass if player has no valid moves
-  useEffect(() => {
-    if (gameState.isGameOver || !gameState.isPlayerTurn) return;
-    
-    const playerMoves = getValidMoves(gameState.board, 1);
-    const botMoves = getValidMoves(gameState.board, 2);
-    
-    if (playerMoves.length === 0) {
-      if (botMoves.length === 0) {
-        // Game over
-        const { isOver, winner } = checkGameOver(gameState.board);
-        setGameState(prev => ({
-          ...prev,
-          isGameOver: isOver,
-          result: winner,
-        }));
-        if (winner.includes('You win')) {
-          const newWins = gameState.wins + 1;
-          setGameState(prev => ({ ...prev, wins: newWins }));
-          setHighScoreState(prev => {
-            const best = Math.max(prev, newWins);
-            setHighScore('reversi', best);
-            return best;
-          });
-        }
-      } else {
-        // Player passes, bot goes
-        setGameState(prev => ({ ...prev, isPlayerTurn: false }));
-        setTimeout(() => {
-          const [br, bc] = getBestMove(gameState.board);
-          const nb = applyMove(gameState.board, br, bc, 2);
-          setGameState(prev => ({ ...prev, board: nb, isPlayerTurn: true }));
-        }, 400);
-      }
+  const winsRef = useRef(gameState.wins);
+  winsRef.current = gameState.wins;
+
+  const activePlayer: 1 | 2 = vsBot ? 1 : currentPlayer;
+
+  const bumpHighScore = (wins: number) => {
+    setHighScoreState(prev => {
+      const best = Math.max(prev, wins);
+      setHighScore('reversi', best);
+      return best;
+    });
+  };
+
+  const resolveBoard = (board: Board, botMode: boolean): { over: boolean; result?: string; winner?: 1 | 2 | 'draw' } => {
+    const p1 = getValidMoves(board, 1).length;
+    const p2 = getValidMoves(board, 2).length;
+    if (p1 > 0 || p2 > 0) return { over: false };
+    const c1 = countPieces(board, 1);
+    const c2 = countPieces(board, 2);
+    if (c1 === c2) return { over: true, result: 'Draw!', winner: 'draw' };
+    const winner: 1 | 2 = c1 > c2 ? 1 : 2;
+    const result = botMode
+      ? winner === 1 ? 'You win! 🎉' : 'Bot wins! 😢'
+      : winner === 1 ? 'Player 1 wins! 🎉' : 'Player 2 wins! 🎉';
+    return { over: true, result, winner };
+  };
+
+  const applyResult = (board: Board, res: { result?: string; winner?: 1 | 2 | 'draw' }) => {
+    setGameState(prev => ({ ...prev, board, isGameOver: true, result: res.result ?? 'Game over' }));
+    if (res.winner === 1) {
+      const newWins = winsRef.current + 1;
+      winsRef.current = newWins;
+      bumpHighScore(newWins);
+      setGameState(prev => ({ ...prev, wins: newWins }));
     }
-  }, [gameState.board, gameState.isPlayerTurn, gameState.isGameOver, gameState.wins]);
+  };
 
-  const onMove = (r: number, c: number) => {
-    const nb = applyMove(gameState.board, r, c, 1);
-    setGameState(prev => ({ ...prev, board: nb }));
-
-    const botMoves = getValidMoves(nb, 2);
-    const playerMoves = getValidMoves(nb, 1);
-    
-    const { isOver, winner } = checkGameOver(nb);
-    if (isOver) {
-      setGameState(prev => ({
-        ...prev,
-        isGameOver: true,
-        result: winner,
-      }));
-      if (winner.includes('You win')) {
-        const newWins = gameState.wins + 1;
-        setGameState(prev => ({ ...prev, wins: newWins }));
-        setHighScoreState(prev => {
-          const best = Math.max(prev, newWins);
-          setHighScore('reversi', best);
-          return best;
-        });
+  const botTurn = (board: Board) => {
+    const botMoves = getValidMoves(board, 2);
+    if (botMoves.length === 0) {
+      if (getValidMoves(board, 1).length === 0) {
+        applyResult(board, resolveBoard(board, true));
+      } else {
+        setNotice('Bot passes');
+        setGameState(prev => ({ ...prev, isPlayerTurn: true }));
       }
       return;
     }
-    
-    if (botMoves.length === 0) return;
-
-    setGameState(prev => ({ ...prev, isPlayerTurn: false }));
-    setTimeout(() => {
-      const [br, bc] = getBestMove(nb);
-      const nb2 = applyMove(nb, br, bc, 2);
-      setGameState(prev => ({ ...prev, board: nb2 }));
-      
-      const pm = getValidMoves(nb2, 1);
-      const bm = getValidMoves(nb2, 2);
-      
-      const { isOver: isOver2, winner: winner2 } = checkGameOver(nb2);
-      if (isOver2) {
-        setGameState(prev => ({
-          ...prev,
-          isGameOver: true,
-          result: winner2,
-        }));
-        if (winner2.includes('You win')) {
-          const newWins = gameState.wins + 1;
-          setGameState(prev => ({ ...prev, wins: newWins }));
-          setHighScoreState(prev => {
-            const best = Math.max(prev, newWins);
-            setHighScore('reversi', best);
-            return best;
-          });
-        }
-      } else if (pm.length === 0) {
-        // Player has no moves, bot goes again
-        setTimeout(() => {
-          const [br2, bc2] = getBestMove(nb2);
-          const nb3 = applyMove(nb2, br2, bc2, 2);
-          setGameState(prev => ({ ...prev, board: nb3 }));
-          
-          const pm2 = getValidMoves(nb3, 1);
-          const bm2 = getValidMoves(nb3, 2);
-          
-          const { isOver: isOver3, winner: winner3 } = checkGameOver(nb3);
-          if (isOver3) {
-            setGameState(prev => ({
-              ...prev,
-              isGameOver: true,
-              result: winner3,
-            }));
-            if (winner3.includes('You win')) {
-              const newWins = gameState.wins + 1;
-              setGameState(prev => ({ ...prev, wins: newWins }));
-              setHighScoreState(prev => {
-                const best = Math.max(prev, newWins);
-                setHighScore('reversi', best);
-                return best;
-              });
-            }
-          } else {
-            setGameState(prev => ({ ...prev, isPlayerTurn: true }));
-          }
-        }, 400);
-      } else {
-        setGameState(prev => ({ ...prev, isPlayerTurn: true }));
-      }
-    }, 400);
+    const [br, bc] = getBestMove(board, botDepth);
+    const nb = applyMove(board, br, bc, 2);
+    setGameState(prev => ({ ...prev, board: nb }));
+    const res = resolveBoard(nb, true);
+    if (res.over) {
+      applyResult(nb, res);
+      return;
+    }
+    if (getValidMoves(nb, 1).length === 0) {
+      setNotice('No moves for you — Bot plays again');
+      setTimeout(() => botTurn(nb), 450);
+    } else {
+      setGameState(prev => ({ ...prev, isPlayerTurn: true }));
+    }
   };
+
+  const onMove = useCallback((r: number, c: number) => {
+    if (gameState.isGameOver || awaitingPass) return;
+
+    const player = activePlayer;
+    const nb = applyMove(gameState.board, r, c, player);
+    play('move');
+
+    const res = resolveBoard(nb, vsBot);
+    if (res.over) {
+      setGameState(prev => ({ ...prev, board: nb }));
+      applyResult(nb, res);
+      return;
+    }
+
+    if (vsBot) {
+      setNotice('');
+      setGameState(prev => ({ ...prev, board: nb, isPlayerTurn: false }));
+      setTimeout(() => botTurn(nb), 400);
+    } else {
+      let next: 1 | 2 = player === 1 ? 2 : 1;
+      let passNote = '';
+      if (getValidMoves(nb, next).length === 0 && getValidMoves(nb, player).length > 0) {
+        passNote = `Player ${next} has no moves`;
+        next = player;
+      }
+      setNotice(passNote);
+      setCurrentPlayer(next);
+      setGameState(prev => ({ ...prev, board: nb }));
+      setAwaitingPass(true);
+    }
+  }, [gameState, vsBot, activePlayer, awaitingPass]);
 
   const onCellClick = (r: number, c: number) => {
-    handleCellClick(gameState.board, r, c, gameState.isPlayerTurn, gameState.isGameOver, onMove);
+    handleCellClick(
+      gameState.board,
+      r,
+      c,
+      vsBot ? gameState.isPlayerTurn : true,
+      gameState.isGameOver || awaitingPass,
+      onMove,
+      activePlayer
+    );
   };
 
-  const validMoves = gameState.isPlayerTurn ? getValidMoves(gameState.board, 1) : [];
-  
-  const onReset = () => {
+  const validMoves = !awaitingPass ? getValidMoves(gameState.board, activePlayer) : [];
+
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      record({ won: gameState.result.includes('You win'), score: gameState.wins });
+    }
+  }, [gameState.isGameOver]);
+
+  const reset = () => {
+    clearSavedState('reversi');
+    setGameState(createInitialState());
+    setCurrentPlayer(1);
+    setAwaitingPass(false);
+    setNotice('');
+  };
+
+  const setMode = (toBot: boolean) => {
+    setVsBot(toBot);
+    setCurrentPlayer(1);
+    setAwaitingPass(false);
+    setNotice('');
     setGameState(createInitialState());
   };
+
+  const modeBtn = (active: boolean) =>
+    `px-3 py-1 rounded-lg text-sm font-bold ${
+      active ? 'bg-cyan-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'
+    }`;
 
   return (
     <GameLayout
       title="Reversi"
-      score={`⚫${countPieces(gameState.board, 1)} ⚪${countPieces(gameState.board, 2)}`}
+      showDifficulty
+      score={`⬛ ${countPieces(gameState.board, 1)} · ⬜ ${countPieces(gameState.board, 2)}`}
       highScore={highScore}
-      onReset={onReset}
+      onReset={reset}
     >
-      <div className="flex flex-col items-center justify-center w-full h-full gap-4">
+      <div className="flex flex-col items-center justify-center w-full h-full gap-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setMode(true)} className={modeBtn(vsBot)}>vs Bot</button>
+          <button onClick={() => setMode(false)} className={modeBtn(!vsBot)}>2 Players</button>
+        </div>
+
+        {!gameState.isGameOver && (
+          <p className="text-sm text-gray-400">
+            {vsBot ? (gameState.isPlayerTurn ? 'Your turn' : 'Bot thinking…') : `Player ${currentPlayer}'s turn`}
+          </p>
+        )}
+        {notice && !gameState.isGameOver && <p className="text-xs text-amber-400">{notice}</p>}
         {gameState.result && <p className="text-xl font-bold text-amber-400">{gameState.result}</p>}
-        
-        {/* Responsive Game Grid */}
+
         <div className="relative w-full max-w-[min(90vw,60vh)] aspect-square">
           <div className="absolute inset-0 bg-green-800 p-2 rounded-xl overflow-hidden">
             <div
@@ -182,6 +212,7 @@ export default function Reversi() {
                   <button
                     key={i}
                     onClick={() => onCellClick(r, c)}
+                    aria-label={`Row ${r + 1}, column ${c + 1}`}
                     className={`flex items-center justify-center rounded-sm min-h-[48px] min-w-[48px] ${
                       isValid ? 'bg-green-600 hover:bg-green-500 active:bg-green-500' : 'bg-green-700'
                     }`}
@@ -194,9 +225,14 @@ export default function Reversi() {
               })}
             </div>
           </div>
+          {!vsBot && awaitingPass && !gameState.isGameOver && (
+            <PassDeviceOverlay player={currentPlayer} onReady={() => setAwaitingPass(false)} />
+          )}
         </div>
-        
-        <p className="text-gray-500 text-xs">You are ⚫ · Bot is ⚪</p>
+
+        <p className="text-gray-500 text-xs">
+          {vsBot ? 'You are ⬛ · Bot is ⬜' : 'Player 1 is ⬛ · Player 2 is ⬜'}
+        </p>
       </div>
     </GameLayout>
   );

@@ -19,8 +19,33 @@ export interface SokobanState {
   isWon: boolean;
 }
 
+// Levels are ordered from easiest to hardest; the UI picks one by difficulty.
 export const LEVELS: Level[] = [
+  // Easy: two boxes, short pushes.
+  [
+    '########',
+    '#      #',
+    '#  .   #',
+    '#  $   #',
+    '#  @   #',
+    '#   $  #',
+    '#  .   #',
+    '########',
+  ],
+  // Medium: the original warehouse layout.
   ['  ####  ', '###..###', '#..$.*.#', '#..$.###', '#.@.##  ', '#.####  ', '####    '],
+  // Hard: four boxes that have to be walked around the dividing walls.
+  [
+    '##########',
+    '#        #',
+    '#  .  .  #',
+    '#  $  $  #',
+    '#        #',
+    '#  .  .  #',
+    '#  $  $  #',
+    '#   @    #',
+    '##########',
+  ],
 ];
 
 export function parseLevel(level: Level): ParsedLevel {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSettings } from '../../hooks/useSettings';
 import { clearHistory, clearFavorites, clearAllHighScores, resetAll } from '../../lib/persistence';
+import { setSoundEnabled } from '../../lib/sound';
 import { Sun, Moon, Monitor, Trash2, RotateCcw } from 'lucide-react';
 
 export default function Settings() {
@@ -129,7 +130,22 @@ export default function Settings() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-white">Sound effects</p>
+                <p className="text-sm text-gray-400">Play sounds during games</p>
+              </div>
+              <button
+                onClick={() => setSoundEnabled(!settings.soundEnabled)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${settings.soundEnabled ? 'bg-blue-500' : 'bg-white/10'}`}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.soundEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
+
+<div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-white">Reduced motion</p>
                 <p className="text-sm text-gray-400">Minimize animations</p>
@@ -143,6 +159,26 @@ export default function Settings() {
                 <div
                   className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
                     settings.reducedMotion ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-white">Colorblind mode</p>
+                <p className="text-sm text-gray-400">Use a colorblind-friendly palette</p>
+              </div>
+              <button
+                onClick={() => updateSettings({ colorblind: !settings.colorblind })}
+                aria-label="Toggle colorblind mode"
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  settings.colorblind ? 'bg-blue-500' : 'bg-white/10'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                    settings.colorblind ? 'translate-x-7' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -205,7 +241,7 @@ export default function Settings() {
           <h2 className="font-display text-lg font-bold mb-4">About</h2>
           <div className="bg-white/5 border border-white/[0.08] rounded-xl p-6">
             <p className="text-gray-400 mb-2">Game Hub v1.0</p>
-            <p className="text-sm text-gray-500">30 browser games · Built with React, TypeScript, Vite & Tailwind CSS</p>
+            <p className="text-sm text-gray-500">34 browser games · Built with React, TypeScript, Vite & Tailwind CSS</p>
           </div>
         </section>
       </div>
