@@ -16,6 +16,7 @@ export default function AppShell({ children }: AppShellProps) {
     { path: '/games', label: 'Games', icon: Gamepad2 },
     { path: '/daily', label: 'Daily', icon: Calendar },
     { path: '/leaderboard', label: 'Records', icon: Trophy },
+    { path: '/achievements', label: 'Achievements', icon: Trophy },
     { path: '/history', label: 'History', icon: Clock },
     { path: '/favorites', label: 'Favorites', icon: Heart },
     { path: '/settings', label: 'Settings', icon: Settings },
