@@ -1,7 +1,7 @@
 export type GameCategory = 'arcade' | 'puzzle' | 'word' | 'strategy' | 'classic';
-export type GameMode = 'single' | 'bot' | 'house';
+export type GameMode = 'single' | 'bot' | 'house' | 'local';
 export type GameDifficulty = 'easy' | 'medium' | 'hard';
-export type GameGenre = 'action' | 'logic' | 'memory' | 'reflex' | 'board' | 'card';
+export type GameGenre = 'action' | 'logic' | 'memory' | 'reflex' | 'board' | 'card' | 'strategy';
 
 export interface GameControls {
   keyboard?: string[];

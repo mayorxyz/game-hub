@@ -10,6 +10,7 @@ import Favorites from './features/favorites/Favorites';
 import Leaderboard from './features/leaderboard/Leaderboard';
 import Settings from './features/settings/Settings';
 import Daily from './features/daily/Daily';
+import Achievements from './features/achievements/Achievements';
 
 function LoadingFallback() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/leaderboard" element={<AppShell><Leaderboard /></AppShell>} />
           <Route path="/settings" element={<AppShell><Settings /></AppShell>} />
           <Route path="/daily" element={<AppShell><Daily /></AppShell>} />
+          <Route path="/achievements" element={<AppShell><Achievements /></AppShell>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
