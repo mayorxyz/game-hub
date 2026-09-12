@@ -25,10 +25,10 @@ export default function WordSearch({ daily = false, dailySeed }: { daily?: boole
   );
 
   const [gameState, setGameState] = useState<WordSearchState>(() => {
-    const saved = loadSavedState<WordSearchState>('word-search', d => {
+    const saved = !daily ? loadSavedState<WordSearchState>('word-search', d => {
       const raw = d as Omit<WordSearchState, 'positions' | 'found'> & { positions: [string, [number, number][]][]; found: string[] };
       return { ...raw, positions: new Map(raw.positions ?? []), found: new Set(raw.found ?? []) };
-    });
+    }) : null;
     return saved ?? makeState(difficulty);
   });
   // The stored grid is clamped to the longest hidden word, so read the real size back.

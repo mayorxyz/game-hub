@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import GameLayout from '../../components/ui/GameLayout';
 import { getHighScore, setHighScore } from '../../lib/persistence';
 import { useGameResult } from '../../hooks/useGameResult';
@@ -26,11 +26,13 @@ export default function Mancala() {
   const [state, setState] = useState<MancalaState>(() => loadSavedState<MancalaState>('mancala', d => d as MancalaState) ?? createInitialState());
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [gameOver, setGameOver] = useState(false);
+  const gameOverRef = useRef(false);
+  gameOverRef.current = gameOver;
   const [result, setResult] = useState('');
   const [wins, setWins] = useState(0);
   const [highScore, setHighScoreState] = useState(getHighScore('mancala'));
   const { record } = useGameResult('mancala');
-  useGameStatePersistence("mancala", state, s => s, () => true);
+  useGameStatePersistence('mancala', state, s => s, () => !gameOverRef.current);
   const play = useSound();
 
   const onMove = useCallback((newState: MancalaState, extraTurn: boolean) => {

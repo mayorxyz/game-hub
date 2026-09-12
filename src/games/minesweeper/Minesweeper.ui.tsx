@@ -28,7 +28,7 @@ export default function Minesweeper({ daily = false, dailySeed }: { daily?: bool
   const cols = applyDifficulty(BASE_COLS, difficultySettings, 'size');
   const mines = applyDifficulty(BASE_MINES, difficultySettings, 'complexity');
   
-  const [gameState, setGameState] = useState<MinesweeperState>(() => loadSavedState<MinesweeperState>('minesweeper', d => d as MinesweeperState) ?? ({
+  const [gameState, setGameState] = useState<MinesweeperState>(() => (!daily ? loadSavedState<MinesweeperState>('minesweeper', d => d as MinesweeperState) : null) ?? ({
     board: createBoard(rows, cols, mines, daily ? dailySeed : undefined),
     isOver: false,
     isWon: false,
@@ -38,7 +38,7 @@ export default function Minesweeper({ daily = false, dailySeed }: { daily?: bool
   }));
   const [bestTime, setBestTime] = useState(getHighScore('minesweeper'));
   const { record } = useGameResult('minesweeper', { daily });
-  useGameStatePersistence("minesweeper", gameState, s => s, s => !s.isOver);
+  useGameStatePersistence('minesweeper', gameState, s => s, s => !(s.isOver || s.isWon));
   const play = useSound();
   const { onKeyDown } = useGridKeyNav(cols);
   const timerRef = useRef<ReturnType<typeof setInterval>>();

@@ -28,7 +28,7 @@ export default function Game2048({ daily = false, dailySeed }: { daily?: boolean
   const [gameState, setGameState] = useState<GameState>(() => (!daily ? loadSavedState<GameState>('2048', d => d as GameState) : null) ?? createInitialState(daily ? dailySeed : undefined, initialTiles));
   const [highScore, setHighScoreState] = useState(getHighScore('2048'));
   const { record } = useGameResult('2048', { daily });
-  useGameStatePersistence("game-2048", gameState, s => s, s => !s.isGameOver);
+  useGameStatePersistence('2048', gameState, s => s, s => !s.isGameOver);
   const play = useSound();
   const { onKeyDown } = useGridKeyNav(4);
 
@@ -77,7 +77,7 @@ export default function Game2048({ daily = false, dailySeed }: { daily?: boolean
   }, [gameState.isGameOver]);
 
   const reset = useCallback(() => {
-    clearSavedState('game-2048');
+    clearSavedState('2048');
     setGameState(createInitialState(daily ? dailySeed : undefined, initialTiles));
     setHighScoreState(getHighScore('2048'));
   }, [daily, dailySeed, initialTiles]);
