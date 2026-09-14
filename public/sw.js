@@ -1,6 +1,16 @@
 // Minimal service worker: offline shell + runtime cache.
-const CACHE = 'gamehub-v1';
+const CACHE = 'gamehub-v2';
 const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+
+// Never intercept dev-server requests (Vite modules, HMR, source files). Doing so
+// cache-first would serve stale code and leave the app blank.
+function isDevRequest(url) {
+  return (
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/')
+  );
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -20,6 +30,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (isDevRequest(url)) return;
 
   // Network-first for navigations, fall back to the cached shell offline.
   if (req.mode === 'navigate') {

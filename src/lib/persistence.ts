@@ -2,6 +2,34 @@
 
 const STORAGE_PREFIX = 'gamehub_';
 
+function safeReadRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeReadJson<T>(key: string, fallback: T): T {
+  const value = safeReadRaw(key);
+  if (!value) return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeWriteJson<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore storage quota / serialization errors
+  }
+}
+
 export const DATA_CHANGE_EVENT = 'gamehub:datachange';
 function notifyChange(): void {
   try {
@@ -23,21 +51,25 @@ export interface Settings {
 
 export function getHighScore(gameId: string): number {
   const key = `${STORAGE_PREFIX}${gameId}_highscore`;
-  const value = localStorage.getItem(key);
-  return value ? parseInt(value, 10) : 0;
+  const value = safeReadRaw(key);
+  return value ? Number.parseInt(value, 10) || 0 : 0;
 }
 
 export function setHighScore(gameId: string, score: number): void {
   const key = `${STORAGE_PREFIX}${gameId}_highscore`;
   const current = getHighScore(gameId);
   if (score > current) {
-    localStorage.setItem(key, score.toString());
+    try {
+      localStorage.setItem(key, score.toString());
+    } catch {
+      // ignore storage quota / serialization errors
+    }
   }
 }
 
 export function getGameState(gameId: string): any {
   const key = `${STORAGE_PREFIX}${gameId}_state`;
-  const value = localStorage.getItem(key);
+  const value = safeReadRaw(key);
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
@@ -52,11 +84,7 @@ export function getGameState(gameId: string): any {
 
 export function setGameState(gameId: string, state: any): void {
   const key = `${STORAGE_PREFIX}${gameId}_state`;
-  try {
-    localStorage.setItem(key, JSON.stringify({ v: 1, data: state }));
-  } catch {
-    // ignore storage quota / serialization errors
-  }
+  safeWriteJson(key, { v: 1, data: state });
 }
 
 export function clearGameState(gameId: string): void {
@@ -66,44 +94,48 @@ export function clearGameState(gameId: string): void {
 
 export function getPlayCount(gameId: string): number {
   const key = `${STORAGE_PREFIX}${gameId}_playcount`;
-  const value = localStorage.getItem(key);
-  return value ? parseInt(value, 10) : 0;
+  const value = safeReadRaw(key);
+  return value ? Number.parseInt(value, 10) || 0 : 0;
 }
 
 export function incrementPlayCount(gameId: string): void {
   const key = `${STORAGE_PREFIX}${gameId}_playcount`;
   const current = getPlayCount(gameId);
-  localStorage.setItem(key, (current + 1).toString());
+  try {
+    localStorage.setItem(key, (current + 1).toString());
+  } catch {
+    // ignore storage quota / serialization errors
+  }
 }
 
 export function getLastPlayed(gameId: string): number | null {
   const key = `${STORAGE_PREFIX}${gameId}_lastplayed`;
-  const value = localStorage.getItem(key);
-  return value ? parseInt(value, 10) : null;
+  const value = safeReadRaw(key);
+  return value ? Number.parseInt(value, 10) || null : null;
 }
 
 export function setLastPlayed(gameId: string): void {
   const key = `${STORAGE_PREFIX}${gameId}_lastplayed`;
-  localStorage.setItem(key, Date.now().toString());
+  try {
+    localStorage.setItem(key, Date.now().toString());
+  } catch {
+    // ignore storage quota / serialization errors
+  }
 }
 
 export function getRecentlyPlayed(): string[] {
-  const key = `${STORAGE_PREFIX}recently_played`;
-  const value = localStorage.getItem(key);
-  return value ? JSON.parse(value) : [];
+  return safeReadJson<string[]>(`${STORAGE_PREFIX}recently_played`, []);
 }
 
 export function addRecentlyPlayed(gameId: string): void {
   const recent = getRecentlyPlayed();
   const updated = [gameId, ...recent.filter(id => id !== gameId)].slice(0, 10);
   const key = `${STORAGE_PREFIX}recently_played`;
-  localStorage.setItem(key, JSON.stringify(updated));
+  safeWriteJson(key, updated);
 }
 
 export function getFavorites(): string[] {
-  const key = `${STORAGE_PREFIX}favorites`;
-  const value = localStorage.getItem(key);
-  return value ? JSON.parse(value) : [];
+  return safeReadJson<string[]>(`${STORAGE_PREFIX}favorites`, []);
 }
 
 export function addFavorite(gameId: string): void {
@@ -111,7 +143,7 @@ export function addFavorite(gameId: string): void {
   if (!favorites.includes(gameId)) {
     favorites.push(gameId);
     const key = `${STORAGE_PREFIX}favorites`;
-    localStorage.setItem(key, JSON.stringify(favorites));
+    safeWriteJson(key, favorites);
   }
 }
 
@@ -119,7 +151,7 @@ export function removeFavorite(gameId: string): void {
   const favorites = getFavorites();
   const updated = favorites.filter(id => id !== gameId);
   const key = `${STORAGE_PREFIX}favorites`;
-  localStorage.setItem(key, JSON.stringify(updated));
+  safeWriteJson(key, updated);
 }
 
 export function isFavorite(gameId: string): boolean {
@@ -128,15 +160,22 @@ export function isFavorite(gameId: string): boolean {
 
 export function getSettings(): Settings {
   const key = `${STORAGE_PREFIX}settings`;
-  const value = localStorage.getItem(key);
-  return value ? JSON.parse(value) : { 
-    soundEnabled: true, 
-    difficulty: 'medium', 
+  const fallback: Settings = {
+    soundEnabled: true,
+    difficulty: 'medium',
     theme: 'dark',
     showInstructions: true,
     confirmRestart: true,
     reducedMotion: false,
-  colorblind: false
+    colorblind: false,
+  };
+
+  const value = safeReadJson<Partial<Settings> | null>(key, null);
+  if (!value) return fallback;
+
+  return {
+    ...fallback,
+    ...value,
   };
 }
 
@@ -144,7 +183,7 @@ export function updateSettings(settings: Partial<Settings>): void {
   const current = getSettings();
   const updated = { ...current, ...settings };
   const key = `${STORAGE_PREFIX}settings`;
-  localStorage.setItem(key, JSON.stringify(updated));
+  safeWriteJson(key, updated);
   notifyChange();
 }
 
@@ -193,29 +232,23 @@ export interface GameStats {
 
 export function getGameStats(): GameStats {
   const key = `${STORAGE_PREFIX}stats`;
-  const value = localStorage.getItem(key);
-  if (!value) {
-    return {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      totalScore: 0,
-      bestStreak: 0,
-      currentStreak: 0,
-      perGame: {},
-    };
-  }
-  try {
-    return JSON.parse(value);
-  } catch {
-    return {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      totalScore: 0,
-      bestStreak: 0,
-      currentStreak: 0,
-      perGame: {},
-    };
-  }
+  const fallback: GameStats = {
+    gamesPlayed: 0,
+    gamesWon: 0,
+    totalScore: 0,
+    bestStreak: 0,
+    currentStreak: 0,
+    perGame: {},
+  };
+
+  const value = safeReadJson<GameStats | null>(key, null);
+  if (!value) return fallback;
+
+  return {
+    ...fallback,
+    ...value,
+    perGame: value.perGame ?? {},
+  };
 }
 
 export function recordGameResult(
@@ -269,34 +302,20 @@ export interface DailyProgressEntry {
 }
 
 export function getDailyProgress(): Record<string, DailyProgressEntry> {
-  const key = `${STORAGE_PREFIX}daily_progress`;
-  const value = localStorage.getItem(key);
-  if (!value) return {};
-  try {
-    return JSON.parse(value);
-  } catch {
-    return {};
-  }
+  return safeReadJson<Record<string, DailyProgressEntry>>(`${STORAGE_PREFIX}daily_progress`, {});
 }
 
 export function setDailyProgress(dateKey: string, entry: DailyProgressEntry): void {
   const progress = getDailyProgress();
   progress[dateKey] = entry;
   const key = `${STORAGE_PREFIX}daily_progress`;
-  localStorage.setItem(key, JSON.stringify(progress));
+  safeWriteJson(key, progress);
 }
 
 // ─── Achievements ───────────────────────────────────────────────────────────
 
 export function getUnlockedAchievements(): string[] {
-  const key = `${STORAGE_PREFIX}achievements`;
-  const value = localStorage.getItem(key);
-  if (!value) return [];
-  try {
-    return JSON.parse(value);
-  } catch {
-    return [];
-  }
+  return safeReadJson<string[]>(`${STORAGE_PREFIX}achievements`, []);
 }
 
 export function unlockAchievement(id: string): void {
@@ -304,7 +323,7 @@ export function unlockAchievement(id: string): void {
   if (!unlocked.includes(id)) {
     unlocked.push(id);
     const key = `${STORAGE_PREFIX}achievements`;
-    localStorage.setItem(key, JSON.stringify(unlocked));
+    safeWriteJson(key, unlocked);
     notifyChange();
   }
 }
