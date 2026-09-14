@@ -1,6 +1,6 @@
-// Minimal service worker: offline shell + runtime cache.
-const CACHE = 'gamehub-v2';
-const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+﻿// Minimal service worker: offline shell + runtime cache.
+const CACHE = 'gamehub-v3';
+const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-512-maskable.png'];
 
 // Never intercept dev-server requests (Vite modules, HMR, source files). Doing so
 // cache-first would serve stale code and leave the app blank.
